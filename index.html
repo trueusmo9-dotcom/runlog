@@ -89,6 +89,39 @@
   .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .grid .stat{background:var(--card2);border-radius:10px;padding:8px 10px}
+  .grid .stat .v{font-size:17px;white-space:nowrap}
+  .sec{margin-top:18px}
+  .sec h3,.zhead h3{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:0 0 8px}
+  .sec h3.sub{margin-top:16px}
+  .note{font-size:12px;color:var(--muted);margin-top:6px}
+  .chart{position:relative;background:var(--card2);border-radius:12px;padding:6px 4px 0}
+  .chart svg{width:100%;height:auto;display:block;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+  .chart .gl{stroke:#2a2f37;stroke-width:1}
+  .chart .bl{stroke:#3a404a;stroke-width:1}
+  .chart .cl{stroke:#8a919c;stroke-width:1}
+  .chart .ax{fill:#8a919c;font:10px Inter,system-ui,sans-serif}
+  .tip{position:absolute;pointer-events:none;background:#0e1013;border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .tip b{display:block;font:600 15px var(--num);color:var(--text)}
+  .tip span{color:var(--muted)}
+  .splits{display:flex;flex-direction:column;gap:2px}
+  .srow{display:grid;grid-template-columns:62px 1fr 64px 56px;align-items:center;gap:8px;padding:5px 0}
+  .sk{font-size:12.5px;color:var(--muted)}
+  .sbar{height:12px;display:block}
+  .sbar i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
+  .sp{font:600 17px var(--num);text-align:right}
+  .sp small{font:500 11px Inter;color:var(--muted);margin-left:1px}
+  .sn{font-size:11px;color:var(--muted)}
+  .zhead{display:flex;justify-content:space-between;align-items:center;margin:16px 0 6px}
+  .zhead h3{margin:0}
+  .maxhr{font-size:12px;color:var(--muted)}
+  .maxhr input{width:52px;margin:0 3px;padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:600 14px Inter;text-align:center}
+  .zrow{display:grid;grid-template-columns:118px 1fr 52px;align-items:center;gap:8px;padding:5px 0}
+  .zl{font-size:13px}
+  .zl span{display:block;font-size:11px;color:var(--muted)}
+  .zbar{height:10px}
+  .zbar i{display:block;height:100%;border-radius:0 4px 4px 0}
+  .zv{font:600 16px var(--num);text-align:right}
+  .zv span{display:block;font:500 11px Inter;color:var(--muted)}
   .del{all:unset;cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:12px;display:inline-block}
 
   .empty{margin-top:28px;text-align:center;color:var(--muted);padding:28px 16px;border:1px dashed var(--line);border-radius:14px}
@@ -157,7 +190,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v8</span>
+    <span>Saved on this device only · v9</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -168,7 +201,7 @@
 <script>
 (() => {
   const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory';
-  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false };
+  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190 };
   const $ = id => document.getElementById(id);
 
   /* ---------- storage ---------- */
@@ -181,6 +214,7 @@
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
     try { state.inventory = JSON.parse(localStorage.getItem(INV_KEY) || 'null'); } catch {}
+    try { const m = parseInt(localStorage.getItem('runlog.maxhr'), 10); if (m >= 140 && m <= 230) state.maxHr = m; } catch {}
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state.runs)); return true; }
@@ -324,6 +358,10 @@
     v = parseFloat(v); if (!isFinite(v)) return 0;
     return v * ({ km: 1000, mi: 1609.344, m: 1, cm: .01, yd: .9144, ft: .3048 }[unit] ?? 1);
   }
+  function toMps(v, unit) {
+    v = parseFloat(v); if (!isFinite(v)) return 0;
+    return v * ({ 'm/s': 1, 'km/hr': 1 / 3.6, 'km/h': 1 / 3.6, 'mi/hr': 0.44704, 'mph': 0.44704, 'm/min': 1 / 60 }[unit] ?? 1);
+  }
   function toSeconds(v, unit) {
     v = parseFloat(v); if (!isFinite(v)) return 0;
     return v * ({ min: 60, s: 1, sec: 1, hr: 3600, h: 3600, ms: .001 }[unit] ?? 60);
@@ -337,16 +375,19 @@
     let duration = toSeconds(a.duration, a.durationUnit) || (end - start) / 1000;
     let distance = a.totalDistance ? toMeters(a.totalDistance, a.totalDistanceUnit) : 0;
     let kcal = a.totalEnergyBurned ? parseFloat(a.totalEnergyBurned) * (a.totalEnergyBurnedUnit === 'kJ' ? 0.239006 : 1) : 0;
-    let hr = 0;
+    let hr = 0, hrMax = 0, stride = 0, speedAvg = 0;
     for (const m of str.matchAll(/<WorkoutStatistics\b[^>]*>/g)) {
       const s = attrs(m[0]);
       if (/DistanceWalkingRunning$/.test(s.type) && !distance) distance = toMeters(s.sum, s.unit);
       else if (/ActiveEnergyBurned$/.test(s.type) && !kcal) kcal = parseFloat(s.sum) * (s.unit === 'kJ' ? 0.239006 : 1);
-      else if (/HeartRate$/.test(s.type)) hr = parseFloat(s.average) || 0;
+      else if (/HeartRate$/.test(s.type)) { hr = parseFloat(s.average) || 0; hrMax = parseFloat(s.maximum) || 0; }
+      else if (/RunningStrideLength$/.test(s.type)) stride = toMeters(s.average, s.unit);
+      else if (/RunningSpeed$/.test(s.type)) speedAvg = toMps(s.average, s.unit);
     }
     const ref = str.match(/<FileReference\s+path="([^"]+)"/);
     return {
-      start, duration, distance, kcal: Math.round(kcal) || 0, hr: Math.round(hr) || 0,
+      start, end: isFinite(end) ? end : start + duration * 1000, duration, distance, kcal: Math.round(kcal) || 0,
+      hr: Math.round(hr) || 0, hrMax: Math.round(hrMax) || 0, stride, speedAvg,
       source: a.sourceName || 'Apple Health',
       indoor: /key="HKIndoorWorkout"\s+value="1"/.test(str),
       routePath: ref ? unesc(ref[1]) : null, route: null
@@ -371,6 +412,7 @@
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
     const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
+    const extra = { hrT: [], hrV: [], speed: [], stride: [] };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
@@ -385,6 +427,12 @@
         if (m[1] === 'Record') {
           const tag = buf.slice(s, gt + 1), type = getAttr(tag, 'type');
           bump(inv.records, type + '|' + getAttr(tag, 'sourceName'), { type, src: getAttr(tag, 'sourceName'), unit: getAttr(tag, 'unit') }, getAttr(tag, 'startDate').slice(0, 10));
+          if (type === 'HKQuantityTypeIdentifierHeartRate') {
+            const t = parseHealthDate(getAttr(tag, 'startDate')), v = parseFloat(getAttr(tag, 'value'));
+            if (isFinite(t) && isFinite(v)) { extra.hrT.push(t); extra.hrV.push(v); }
+          } else if (type === 'HKQuantityTypeIdentifierRunningSpeed' || type === 'HKQuantityTypeIdentifierRunningStrideLength') {
+            extra[type.endsWith('Speed') ? 'speed' : 'stride'].push({ t0: parseHealthDate(getAttr(tag, 'startDate')), t1: parseHealthDate(getAttr(tag, 'endDate')), v: getAttr(tag, 'value'), unit: getAttr(tag, 'unit') });
+          }
           pos = gt + 1; continue;
         }
         if (m[1] === 'ActivitySummary') { inv.activitySummaries++; pos = gt + 1; continue; }
@@ -410,7 +458,7 @@
       routes: inv.routes, activitySummaries: inv.activitySummaries
     };
     try { localStorage.setItem(INV_KEY, JSON.stringify(state.inventory)); } catch {}
-    return { runs, others };
+    return { runs, others, extra };
   }
 
   /* ---------- coordinate repair ----------
@@ -436,15 +484,65 @@
     }
     const nm = text.match(/<trk>[\s\S]*?<name>([^<]*)<\/name>/) || text.match(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/);
     const t0 = times.find(isFinite), t1 = [...times].reverse().find(isFinite);
-    return { pts, start: t0, end: t1, name: nm ? unesc(nm[1]).trim() : '' };
+    return { pts, times, start: t0, end: t1, name: nm ? unesc(nm[1]).trim() : '' };
   }
+  /* ---------- run analysis: distance/time profile, heart rate, cadence ---------- */
+  function thin(arr, max) {
+    if (arr.length <= max) return arr;
+    const out = [], step = (arr.length - 1) / (max - 1);
+    for (let i = 0; i < max; i++) out.push(arr[Math.round(i * step)]);
+    return out;
+  }
+  // Trims GPS points to the workout window and builds a [metres, seconds] profile for splits and pace.
+  function analyzeRoute(g, a, b, watchDist) {
+    let pts = g.pts, ts = g.times || [];
+    const timed = ts.length === pts.length && ts.filter(isFinite).length >= pts.length * 0.9;
+    if (timed && isFinite(a) && isFinite(b)) {
+      const keep = [];
+      for (let i = 0; i < pts.length; i++) if (ts[i] >= a - 5000 && ts[i] <= b + 5000) keep.push(i);
+      if (keep.length > 10) { pts = keep.map(i => pts[i]); ts = keep.map(i => ts[i]); }
+    }
+    const out = { route: downsample(pts) };
+    if (!timed || pts.length < 5) return out;
+    const raw = [[0, 0]];
+    let d = 0;
+    for (let i = 1; i < pts.length; i++) { d += haversine(pts[i - 1], pts[i]); raw.push([d, (ts[i] - ts[0]) / 1000]); }
+    // Line GPS distance up with the watch's own total when they're close, so splits match the headline distance.
+    const k = watchDist && d && Math.abs(watchDist / d - 1) < 0.12 ? watchDist / d : 1;
+    out.prof = thin(raw, 500).map(([m, s]) => [Math.round(m * k), Math.round(s)]);
+    out.gpsDist = Math.round(d);
+    return out;
+  }
+  function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+  function enrichRuns(runs, x) {
+    if (!x) return;
+    let T = x.hrT, V = x.hrV, sorted = true;
+    for (let i = 1; i < T.length; i++) if (T[i] < T[i - 1]) { sorted = false; break; }
+    if (!sorted) { const idx = T.map((_, i) => i).sort((p, q) => T[p] - T[q]); T = idx.map(i => x.hrT[i]); V = idx.map(i => x.hrV[i]); }
+    for (const r of runs) {
+      const a = r.start, b = r.end || r.start + r.duration * 1000;
+      const pts = [];
+      for (let i = lowerBound(T, a); i < T.length && T[i] <= b; i++) pts.push([(T[i] - a) / 1000, V[i]]);
+      if (pts.length >= 3) {
+        r.hr = Math.round(pts.reduce((s, p) => s + p[1], 0) / pts.length);
+        r.hrMax = Math.round(Math.max(...pts.map(p => p[1])));
+        r.hrSeries = thin(pts, 360).map(([s, v]) => [Math.round(s), Math.round(v)]);
+      }
+      const near = list => list.find(o => isFinite(o.t0) && o.t0 >= a - 120000 && o.t0 <= b + 120000);
+      if (!r.stride) { const s = near(x.stride); if (s) r.stride = toMeters(s.v, s.unit); }
+      if (!r.speedAvg) { const s = near(x.speed); if (s) r.speedAvg = toMps(s.v, s.unit); }
+    }
+  }
+  const runSpeed = r => r.speedAvg || (r.distance && r.duration ? r.distance / r.duration : 0);
+  const cadenceOf = r => (r.stride > 0.3 && r.stride < 3 && runSpeed(r)) ? Math.round(runSpeed(r) / r.stride * 60) : 0;
+
   function runFromGpx(g, source) {
     if (g.pts.length < 2) return null;
     const distance = pathLength(g.pts);
+    const start = isFinite(g.start) ? g.start : Date.now(), end = isFinite(g.end) ? g.end : start;
     return {
-      start: isFinite(g.start) ? g.start : Date.now(),
-      duration: isFinite(g.start) && isFinite(g.end) ? (g.end - g.start) / 1000 : 0,
-      distance, kcal: 0, hr: 0, source: g.name || source, indoor: false, route: downsample(g.pts)
+      start, end, duration: (end - start) / 1000,
+      distance, kcal: 0, hr: 0, source: g.name || source, indoor: false, ...analyzeRoute(g, start, end, 0)
     };
   }
 
@@ -454,8 +552,9 @@
     const key = Math.round(r.start / 60000);
     const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000);
     if (existing) {
-      if (!existing.route && r.route) existing.route = r.route;
-      for (const f of ['distance', 'duration', 'kcal', 'hr']) if (!existing[f] && r[f]) existing[f] = r[f];
+      if (r.route && (!existing.route || r.prof)) existing.route = r.route;
+      for (const f of ['distance', 'duration', 'kcal', 'end']) if (!existing[f] && r[f]) existing[f] = r[f];
+      for (const f of ['hr', 'hrMax', 'hrSeries', 'stride', 'speedAvg', 'prof', 'gpsDist']) if (r[f]) existing[f] = r[f];
       return false;
     }
     delete r.routePath;
@@ -469,7 +568,8 @@
     const xml = entries.find(e => /(^|\/)export\.xml$/i.test(e.name));
     if (xml) {
       setStatus('Scanning your health data…', 0);
-      const { runs, others } = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
+      const { runs, others, extra } = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
+      enrichRuns(runs, extra);
       const withRoutes = runs.filter(r => r.routePath);
       let i = 0;
       for (const r of withRoutes) {
@@ -480,7 +580,7 @@
         try {
           const g = parseGpx(await entryText(file, entry));
           if (g.pts.length > 1) {
-            r.route = downsample(g.pts);
+            Object.assign(r, analyzeRoute(g, r.start, r.end, r.distance));
             if (!r.distance) r.distance = pathLength(g.pts);
           }
         } catch {}
@@ -508,7 +608,8 @@
       if (n.endsWith('.zip')) res = await importZip(f);
       else if (n.endsWith('.xml')) {
         setStatus('Scanning your health data…', 0);
-        const { runs, others } = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
+        const { runs, others, extra } = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
+        enrichRuns(runs, extra);
         let added = 0; for (const r of runs) if (addRun(r)) added++;
         res = { added, found: runs.length, others, routes: 0 };
       } else if (n.endsWith('.gpx')) {
@@ -698,6 +799,7 @@
     destroyMaps();
     $('content').innerHTML = html;
     wireInventory();
+    wireCharts();
     initMaps();
   }
 
@@ -768,24 +870,193 @@
     });
   }
 
+  /* ---------- splits, pace, heart rate ---------- */
+  function splitsOf(prof, unitM) {
+    const out = [];
+    let k = 1, prevT = 0;
+    for (let i = 1; i < prof.length; i++) {
+      while (prof[i][0] >= k * unitM) {
+        const [d0, t0] = prof[i - 1], [d1, t1] = prof[i];
+        const t = t0 + ((k * unitM - d0) / ((d1 - d0) || 1)) * (t1 - t0);
+        out.push({ n: k, dist: unitM, sec: t - prevT });
+        prevT = t; k++;
+      }
+    }
+    const last = prof[prof.length - 1], rem = last[0] - (k - 1) * unitM;
+    if (rem > unitM * 0.05 && last[1] > prevT) out.push({ n: k, dist: rem, sec: last[1] - prevT, partial: true });
+    return out;
+  }
+  function paceSeriesOf(prof, unitM) {
+    const out = [];
+    let j = 0;
+    for (let i = 1; i < prof.length; i++) {
+      while (j + 1 < i && prof[i][0] - prof[j + 1][0] >= 150) j++;
+      const dd = prof[i][0] - prof[j][0], dt = prof[i][1] - prof[j][1];
+      if (dd < 100 || dt <= 0) continue;
+      const pace = dt / dd * unitM, perKm = dt / dd * 1000;
+      if (perKm < 150 || perKm > 1200) continue;
+      out.push([prof[i][0] / unitM, pace]);
+    }
+    return out;
+  }
+  const mmss = s => { s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+  function niceTicks(lo, hi, n = 4) {
+    const span = hi - lo || 1, raw = span / n, mag = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step, t = [];
+    for (let v = a; v <= b + step / 2; v += step) t.push(+v.toFixed(6));
+    return t;
+  }
+  function niceTimeTicks(lo, hi) { // seconds, steps of whole minutes
+    const span = hi - lo || 60, mins = [1, 2, 5, 10, 15, 30, 60].find(m => span / (m * 60) <= 5) || 60, step = mins * 60, t = [];
+    for (let v = Math.floor(lo / step) * step; v <= hi + step / 2; v += step) t.push(v);
+    return t;
+  }
+
+  const CHARTS = {};
+  function lineChart(key, data, o) {
+    if (data.length < 2) return '';
+    const W = 340, H = 168, L = 40, R = 12, T = 12, B = 26;
+    const xs = data.map(d => d[0]), ys = data.map(d => d[1]);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    let yt = o.yTicks(Math.min(...ys), Math.max(...ys));
+    const yMin = yt[0], yMax = yt[yt.length - 1];
+    const sx = x => L + (x - xMin) / ((xMax - xMin) || 1) * (W - L - R);
+    const sy = y => o.invert ? T + (y - yMin) / ((yMax - yMin) || 1) * (H - T - B) : H - B - (y - yMin) / ((yMax - yMin) || 1) * (H - T - B);
+    const d = data.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ' ' + sy(p[1]).toFixed(1)).join('');
+    const area = o.area ? `<path d="${d}L${sx(xMax).toFixed(1)} ${H - B}L${sx(xMin).toFixed(1)} ${H - B}Z" fill="${o.color}" fill-opacity=".1"/>` : '';
+    const grid = yt.map(v => `<line x1="${L}" x2="${W - R}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}" class="gl"/><text x="${L - 6}" y="${(sy(v) + 3.5).toFixed(1)}" text-anchor="end" class="ax">${o.yFmt(v)}</text>`).join('');
+    const xt = o.xTicks(xMin, xMax).filter(v => v >= xMin - 1e-9 && v <= xMax + 1e-9);
+    const xl = xt.map(v => `<text x="${sx(v).toFixed(1)}" y="${H - 8}" text-anchor="middle" class="ax">${o.xFmt(v)}</text>`).join('');
+    CHARTS[key] = { data, sx, sy, W, H, T, B, tip: o.tip };
+    return `<div class="chart" data-chart="${key}">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">
+        ${grid}<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" class="bl"/>${xl}${area}
+        <path d="${d}" fill="none" stroke="${o.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <g class="cur" style="display:none"><line y1="${T}" y2="${H - B}" class="cl"/><circle r="4.5" fill="${o.color}" stroke="var(--card)" stroke-width="2"/></g>
+        <rect x="0" y="0" width="${W}" height="${H}" fill="transparent" class="hit"/>
+      </svg><div class="tip" hidden></div></div>`;
+  }
+  function wireCharts() {
+    document.querySelectorAll('.chart[data-chart]').forEach(el => {
+      const c = CHARTS[el.dataset.chart]; if (!c) return;
+      const svg = el.querySelector('svg'), cur = el.querySelector('.cur'), tip = el.querySelector('.tip');
+      const show = ev => {
+        const rect = svg.getBoundingClientRect(), vx = (ev.clientX - rect.left) / rect.width * c.W;
+        let best = 0, bd = Infinity;
+        c.data.forEach((p, i) => { const dd = Math.abs(c.sx(p[0]) - vx); if (dd < bd) { bd = dd; best = i; } });
+        const p = c.data[best], x = c.sx(p[0]), y = c.sy(p[1]);
+        cur.style.display = ''; cur.querySelector('line').setAttribute('x1', x); cur.querySelector('line').setAttribute('x2', x);
+        cur.querySelector('circle').setAttribute('cx', x); cur.querySelector('circle').setAttribute('cy', y);
+        tip.hidden = false; tip.innerHTML = c.tip(p);
+        const px = x / c.W * rect.width, w = tip.offsetWidth;
+        tip.style.left = Math.max(0, Math.min(rect.width - w, px - w / 2)) + 'px';
+        const py = y / c.H * rect.height, above = py - tip.offsetHeight - 12;
+        tip.style.top = (above >= 0 ? above : py + 14) + 'px';
+      };
+      const hide = () => { cur.style.display = 'none'; tip.hidden = true; };
+      svg.addEventListener('pointerdown', show);
+      svg.addEventListener('pointermove', show);
+      svg.addEventListener('pointerleave', ev => { if (ev.pointerType !== 'touch') hide(); });
+      el._hide = hide;
+    });
+  }
+  // On touch screens the tooltip stays until you tap somewhere else.
+  document.addEventListener('pointerdown', ev => {
+    document.querySelectorAll('.chart[data-chart]').forEach(el => { if (!el.contains(ev.target) && el._hide) el._hide(); });
+  });
+
+  const ZONES = [
+    { z: 'Z1', name: 'Recovery', lo: 0, hi: .6, c: '#8a4a2c' },
+    { z: 'Z2', name: 'Easy', lo: .6, hi: .7, c: '#b0562d' },
+    { z: 'Z3', name: 'Aerobic', lo: .7, hi: .8, c: '#d8632f' },
+    { z: 'Z4', name: 'Threshold', lo: .8, hi: .9, c: '#ff7a45' },
+    { z: 'Z5', name: 'Max', lo: .9, hi: 9, c: '#ffb894' }
+  ];
+  function zonesHtml(r) {
+    const s = r.hrSeries, max = state.maxHr, secs = ZONES.map(() => 0);
+    for (let i = 0; i < s.length - 1; i++) {
+      const dt = Math.min(s[i + 1][0] - s[i][0], 30), f = s[i][1] / max;
+      secs[ZONES.findIndex(z => f < z.hi)] += dt;
+    }
+    const total = secs.reduce((a, b) => a + b, 0) || 1, top = Math.max(...secs) || 1;
+    const rows = ZONES.map((z, i) => {
+      const lo = Math.round(z.lo * max), hi = Math.round(Math.min(z.hi, 1) * max);
+      const range = i === 0 ? `under ${hi}` : i === 4 ? `${lo}+` : `${lo}–${hi - 1}`;
+      return `<div class="zrow"><div class="zl"><b>${z.z}</b> ${z.name}<span>${range} bpm</span></div>
+        <div class="zbar"><i style="width:${Math.max(secs[i] ? 2 : 0, secs[i] / top * 100).toFixed(1)}%;background:${z.c}"></i></div>
+        <div class="zv">${mmss(secs[i])}<span>${Math.round(secs[i] / total * 100)}%</span></div></div>`;
+    }).join('');
+    return `<div class="zhead"><h3>Heart-rate zones</h3>
+      <label class="maxhr">Max HR <input id="maxHr" type="number" inputmode="numeric" min="140" max="230" value="${max}"> bpm</label></div>${rows}`;
+  }
+
   function detailHtml(r) {
-    const U = state.unit;
+    const U = state.unit, unitM = M_PER[U];
     const map = r.route && r.route.length > 1
       ? `<div class="bigmap" data-map="${r.id}">${routeSvg(r.route, 400, 300, { pad: 22, stroke: 3, grid: true, marker: 5.5 })}</div>
          <div class="legend"><span><i style="background:var(--go)"></i>Start</span><span><i style="border:2px solid var(--accent2);width:7px;height:7px"></i>Finish</span><span>${typeof L !== 'undefined' ? 'Drag and pinch to explore' : 'Map needs internet'}</span></div>`
       : '';
-    return `${map}<div class="grid">
+    const cad = cadenceOf(r);
+    const strideTxt = r.stride ? (U === 'km' ? r.stride.toFixed(2) + ' m' : (r.stride / 0.3048).toFixed(1) + ' ft') : '–';
+    let html = `${map}<div class="grid">
       <div class="stat"><div class="k">Distance</div><div class="v">${r.distance ? fmtDist(r.distance) + ' ' + U : '–'}</div></div>
       <div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div>
       <div class="stat"><div class="k">Avg pace</div><div class="v">${fmtPace(r.duration, r.distance)} /${U}</div></div>
       <div class="stat"><div class="k">Avg speed</div><div class="v">${fmtSpeed(r.duration, r.distance)} ${speedUnit()}</div></div>
       <div class="stat"><div class="k">Avg HR</div><div class="v">${r.hr ? r.hr + ' bpm' : '–'}</div></div>
+      <div class="stat"><div class="k">Max HR</div><div class="v">${r.hrMax ? r.hrMax + ' bpm' : '–'}</div></div>
+      <div class="stat"><div class="k">Cadence</div><div class="v">${cad ? cad + ' spm' : '–'}</div></div>
+      <div class="stat"><div class="k">Stride</div><div class="v">${strideTxt}</div></div>
       <div class="stat"><div class="k">Calories</div><div class="v">${r.kcal ? r.kcal + ' kcal' : '–'}</div></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
+    </div>`;
+
+    // Splits + pace chart
+    html += `<div class="sec"><h3>Splits</h3>`;
+    if (r.prof && r.prof.length > 3) {
+      const sp = splitsOf(r.prof, unitM);
+      const paces = sp.map(s => s.sec / s.dist * unitM), fastest = Math.min(...paces.filter((_, i) => !sp[i].partial || sp.length === 1));
+      const slowest = Math.max(...paces), floor = fastest * 0.85;
+      html += `<div class="splits">` + sp.map((s, i) => {
+        const pace = paces[i], w = 35 + 65 * ((slowest - pace) / ((slowest - floor) || 1));
+        return `<div class="srow"><span class="sk">${s.partial ? (s.dist / unitM).toFixed(2) : s.n} ${U}</span>
+          <span class="sbar"><i style="width:${Math.max(8, Math.min(100, w)).toFixed(1)}%"></i></span>
+          <span class="sp">${mmss(pace)}<small>/${U}</small></span>
+          <span class="sn">${Math.abs(pace - fastest) < 0.5 && sp.length > 1 ? 'Fastest' : s.partial ? mmss(s.sec) : ''}</span></div>`;
+      }).join('') + `</div>`;
+      const ps = paceSeriesOf(r.prof, unitM);
+      if (ps.length > 5) {
+        html += `<h3 class="sub">Pace</h3>` + lineChart('pace-' + r.id, ps, {
+          label: 'Pace over distance', color: 'var(--accent)', invert: true, area: false,
+          yTicks: (lo, hi) => { const st = (hi - lo) > 240 ? 60 : 30, a = Math.floor(lo / st) * st, b = Math.ceil(hi / st) * st, t = []; for (let v = a; v <= b; v += st) t.push(v); return t; },
+          yFmt: mmss, xTicks: (a, b) => niceTicks(a, b, 4), xFmt: v => (+v.toFixed(2)) + ' ' + U,
+          tip: p => `<b>${mmss(p[1])} /${U}</b><span>at ${p[0].toFixed(2)} ${U}</span>`
+        }) + `<div class="note">Faster is higher. From GPS, smoothed over about 150 m.</div>`;
+      }
+    } else {
+      html += `<div class="note">${r.indoor ? 'Treadmill runs have no GPS, so there are no splits.' : r.route ? 'Import your Health export.zip again to calculate splits for this run.' : 'This run has no GPS route.'}</div>`;
+    }
+    html += `</div>`;
+
+    // Heart rate
+    html += `<div class="sec"><h3>Heart rate</h3>`;
+    if (r.hrSeries && r.hrSeries.length > 3) {
+      html += lineChart('hr-' + r.id, r.hrSeries, {
+        label: 'Heart rate over time', color: '#ff5a5f', area: true,
+        yTicks: (lo, hi) => niceTicks(Math.max(40, lo - 5), hi + 5, 4), yFmt: v => Math.round(v),
+        xTicks: niceTimeTicks, xFmt: v => Math.round(v / 60) + ' min',
+        tip: p => `<b>${p[1]} bpm</b><span>at ${mmss(p[0])}</span>`
+      }) + `<div class="note">${r.hrSeries.length} readings from your watch during this run.</div>` + zonesHtml(r);
+    } else {
+      html += `<div class="note">No heart-rate readings found for this run. Import your Health export.zip again to look for them.</div>`;
+    }
+    html += `</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
       <span style="font-size:12px;color:var(--muted)">Source: ${esc(r.source)}</span>
       <button class="del" data-del="${r.id}" type="button">Remove this run</button>
     </div>`;
+    return html;
   }
 
   /* ---------- events ---------- */
@@ -818,6 +1089,12 @@
     const top = e.target.closest('.top'); if (!top) return;
     const id = top.parentElement.dataset.id;
     state.open.has(id) ? state.open.delete(id) : state.open.add(id);
+    render();
+  });
+  $('content').addEventListener('change', e => {
+    if (e.target.id !== 'maxHr') return;
+    const m = parseInt(e.target.value, 10);
+    if (m >= 140 && m <= 230) { state.maxHr = m; try { localStorage.setItem('runlog.maxhr', String(m)); } catch {} }
     render();
   });
   $('content').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('top')) { e.preventDefault(); e.target.click(); } });
