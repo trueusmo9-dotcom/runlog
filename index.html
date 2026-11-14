@@ -163,8 +163,8 @@
   .kmlab{min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#0e1013;color:#eef0f3;font:700 10.5px Inter;display:flex;align-items:center;justify-content:center;border:1.5px solid #ffb38f}
   .pp-pop{font:13px Inter;color:#0e1013;text-align:center}
   .pp-pop button{margin-top:6px;padding:6px 10px;border:0;border-radius:8px;background:#5a1f1f;color:#fff;font:600 13px Inter}
-  .sports{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}
-  .sports button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--muted);font:600 12.5px Inter;-webkit-tap-highlight-color:transparent}
+  .sports{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0 0 10px}
+  .sports button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--muted);font:600 11.5px Inter;-webkit-tap-highlight-color:transparent}
   .sports button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a0d06}
   body.in-run .sports{display:none}
   .empty.soon svg{color:var(--accent);margin-bottom:6px}
@@ -185,6 +185,46 @@
   .hsub{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
   .hsub span{display:block;font:400 11.5px Inter;text-transform:none;letter-spacing:0;margin-top:2px}
   .morelink{display:block;margin-top:12px}
+  .wide-btn{all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:12px 0;margin:8px 0;border-radius:12px;background:var(--card);border:1px solid var(--line);font:600 15px Inter;cursor:pointer;color:var(--text)}
+  .wide-btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0d06}
+  .days{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .dayrow{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .dayrow.today{border-color:var(--accent)}
+  .day-h{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:12px;padding:11px 12px;-webkit-tap-highlight-color:transparent}
+  .day-h:active{background:var(--card2)}
+  .dname{width:40px;text-align:center;flex:none}
+  .dname b{display:block;font:600 13px Inter;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .dname small{font:700 20px var(--num)}
+  .dwo{flex:1;min-width:0}
+  .dwo b{display:block;font:600 15px Inter;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dwo b.rest{color:var(--muted)}
+  .dwo small{font-size:12px;color:var(--muted)}
+  .addday{font:500 14px Inter;color:var(--accent)}
+  .dex{padding:0 12px 8px 64px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+  .wo-card .dex{padding:8px 0 0}
+  .dex span{color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+  .picker{border-top:1px solid var(--line);padding:10px 12px 12px;background:var(--card2)}
+  .pk-h{font:600 11.5px Inter;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px}
+  .pk{all:unset;cursor:pointer;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 12px;margin-bottom:6px;border-radius:10px;background:var(--card);border:1px solid var(--line)}
+  .pk.on{border-color:var(--accent)}
+  .pk b{font:600 14px Inter}
+  .pk small{font-size:12px;color:var(--muted)}
+  .pk-row{display:flex;justify-content:space-between;margin-top:4px}
+  .danger-t{color:#ff8f8f}
+  .wo-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  .wo-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .wo-top b{display:block;font:600 16px Inter}
+  .wo-top small{font-size:12px;color:var(--muted)}
+  .wo-act{display:flex;gap:14px}
+  .wo-form .ex-head,.wo-form .ex-row{display:grid;grid-template-columns:1fr 44px 52px 60px;gap:6px;align-items:center}
+  .wo-form .ex-head{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 4px}
+  .wo-form .ex-head span:last-child{display:none}
+  .wo-form .ex-row{margin-bottom:4px;grid-template-areas:"n s r w" "t t t t"}
+  .wo-form .ex-row input{margin:0;padding:9px 8px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:16px Inter;width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none}
+  .wo-form .ex-row .ex-num{text-align:center;padding:9px 2px}
+  .ex-tools{grid-area:t;display:flex;justify-content:flex-end;gap:4px;margin:-2px 0 6px}
+  .ex-tools button{all:unset;cursor:pointer;font-size:12px;color:var(--muted);padding:2px 9px;border-radius:7px;border:1px solid var(--line)}
+  .ex-tools button:disabled{opacity:.3;cursor:default}
   .dtiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin:10px 0}
   .dtile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
   .hcard .dtile{background:var(--card2);border-color:transparent}
@@ -354,7 +394,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v21<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v22<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -1748,13 +1788,15 @@
     health: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M5 12h3l1.5-2.5 2 4.5 1.5-2h3"/>',
     run: '<path d="M13 4.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/><path d="M7 21l3-6 3 2v5"/><path d="M6 12l3-4 4 1 2 3 3 1"/><path d="M10 15l1.5-5"/>',
     bike: '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5l4-7h5l4 7M9.5 9.5L12 16.5h-3M14.5 9.5l-1-3h-2"/>',
+    workout: '<path d="M6.5 6.5v11M17.5 6.5v11M4 9v6M20 9v6M6.5 12h11"/>',
     swim: '<path d="M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l5-5 3 2 3 3"/>'
   };
   const SPORTS = {
     health: { name: 'Health', tabs: [['health', 'Overview', '#health']], sub: [['sleep', '#health-sleep'], ['day', '#health-day']] },
     run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
     bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
-    swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] }
+    swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] },
+    workout: { name: 'Workout', tabs: [['week', 'Week plan', '#workout'], ['presets', 'Workouts', '#workout-presets']] }
   };
   function routeFromHash() {
     const hs = location.hash;
@@ -1968,6 +2010,175 @@
     wireCharts();
   }
 
+  /* ---------- Workouts: preset workouts + a weekly plan ---------- */
+  const WO_KEY = 'runlog.workouts';
+  let wo = { presets: [], plans: {} };
+  try { wo = Object.assign(wo, JSON.parse(localStorage.getItem(WO_KEY) || '{}')); } catch {}
+  const saveWo = () => { try { localStorage.setItem(WO_KEY, JSON.stringify(wo)); return true; } catch { showMsg('Your phone’s storage for this app is full, so this could not be saved.', true); return false; } };
+  const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const EX_SUGGEST = ['Bench press', 'Incline bench press', 'Dumbbell press', 'Overhead press', 'Shoulder press', 'Lateral raise', 'Squat', 'Front squat', 'Leg press', 'Lunge',
+    'Bulgarian split squat', 'Deadlift', 'Romanian deadlift', 'Hip thrust', 'Leg curl', 'Leg extension', 'Calf raise', 'Barbell row', 'Dumbbell row', 'Seated row', 'Lat pulldown',
+    'Pull-up', 'Chin-up', 'Push-up', 'Dip', 'Bicep curl', 'Hammer curl', 'Tricep pushdown', 'Skull crusher', 'Face pull', 'Plank', 'Crunch', 'Hanging leg raise', 'Russian twist', 'Cable crunch'];
+  const wUnit = () => state.unit === 'km' ? 'kg' : 'lb';
+  // Weights are kept in the unit they were typed in, and converted only for display.
+  function fmtWeight(ex) {
+    if (ex.w == null || ex.w === '') return '';
+    let v = +ex.w; const u = ex.wu || 'kg';
+    if (u !== wUnit()) v = u === 'kg' ? v / 0.45359237 : v * 0.45359237;
+    v = Math.round(v * 2) / 2;
+    return `${v} ${wUnit()}`;
+  }
+  const exLine = ex => `${esc(ex.name || 'Exercise')} <span>${ex.sets || '–'} × ${esc(String(ex.reps || '–'))}${ex.w != null && ex.w !== '' ? ' @ ' + fmtWeight(ex) : ''}</span>`;
+  const presetById = id => wo.presets.find(p => p.id === id);
+  const weekKey = off => dayKey(new Date(addWeeks(weekStart(Date.now()), off)));
+
+  function renderWorkout(view) {
+    $('footer').hidden = true;
+    if (view === 'presets') return renderPresets();
+    const off = state.woWeek || 0, wk = weekKey(off), plan = wo.plans[wk] || (wo.plans[wk] = Array(7).fill(null));
+    const ws = new Date(wk + 'T12:00:00'), todayK = dayKey(new Date());
+    const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const label = off === 0 ? 'This week' : off === 1 ? 'Next week' : off === -1 ? 'Last week' : off > 0 ? `In ${off} weeks` : `${-off} weeks ago`;
+    const planned = plan.filter(x => x && x !== 'rest' && presetById(x)).length;
+    let html = `<div class="week slim" id="woWeekNav">
+        <button class="wnav" type="button" id="wPrev" aria-label="Previous week">${arrow('M15 6l-6 6 6 6')}</button>
+        <div class="wmid"><div class="wlabel">${label}</div><div class="wrange">${esc(weekRangeLabel(ws.getTime()))} · ${planned} workout${planned === 1 ? '' : 's'}</div></div>
+        <button class="wnav" type="button" id="wNext" aria-label="Next week">${arrow('M9 6l6 6-6 6')}</button>
+      </div>`;
+    const prevKey = weekKey(off - 1), prevPlan = wo.plans[prevKey];
+    if (plan.every(x => !x) && prevPlan && prevPlan.some(Boolean))
+      html += `<button type="button" class="wide-btn" id="copyWeek">Copy last week’s plan</button>`;
+    if (!wo.presets.length)
+      html += `<div class="note" style="margin:6px 2px 10px">Start by making a workout in the <b>Workouts</b> tab, then add it to days here. You can also create one straight from a day below.</div>`;
+    html += `<div class="days">`;
+    plan.forEach((x, i) => {
+      const d = new Date(ws); d.setDate(d.getDate() + i);
+      const dk = dayKey(d), p = x && x !== 'rest' ? presetById(x) : null;
+      const open = state.woPick === i;
+      html += `<div class="dayrow${dk === todayK ? ' today' : ''}${open ? ' open' : ''}">
+        <button type="button" class="day-h" data-day="${i}">
+          <div class="dname"><b>${WEEKDAYS[i].slice(0, 3)}</b><small>${d.getDate()}</small></div>
+          <div class="dwo">${p ? `<b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small>` : x === 'rest' ? `<b class="rest">Rest day</b>` : `<span class="addday">+ Add workout</span>`}</div>
+          ${dk === todayK ? '<span class="badge">Today</span>' : ''}
+        </button>`;
+      if (open) {
+        if (p) html += `<div class="dex">${p.ex.map(ex => `<div>${exLine(ex)}</div>`).join('')}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}</div>`;
+        html += `<div class="picker"><div class="pk-h">${p || x === 'rest' ? 'Change to' : 'Choose a workout'}</div>
+          ${wo.presets.map(pr => `<button type="button" class="pk${pr.id === x ? ' on' : ''}" data-set="${pr.id}"><b>${esc(pr.name)}</b><small>${pr.ex.length} exercise${pr.ex.length === 1 ? '' : 's'}</small></button>`).join('')}
+          <button type="button" class="pk${x === 'rest' ? ' on' : ''}" data-set="rest"><b>Rest day</b></button>
+          <div class="pk-row"><button type="button" class="linkbtn" id="pkNew">+ New workout</button>${x ? `<button type="button" class="linkbtn danger-t" data-set="">Clear day</button>` : ''}</div>
+        </div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+    $('content').innerHTML = html;
+    $('wPrev').onclick = () => { state.woWeek = off - 1; state.woPick = null; render(); };
+    $('wNext').onclick = () => { state.woWeek = off + 1; state.woPick = null; render(); };
+    if ($('copyWeek')) $('copyWeek').onclick = () => { wo.plans[wk] = prevPlan.slice(); saveWo(); render(); };
+    document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { const i = +b.dataset.day; state.woPick = state.woPick === i ? null : i; render(); });
+    document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { plan[state.woPick] = b.dataset.set || null; wo.plans[wk] = plan; saveWo(); state.woPick = null; render(); });
+    if ($('pkNew')) $('pkNew').onclick = () => { state.woReturn = { week: off, day: state.woPick }; state.woDraft = newDraft(); goHash('#workout-presets'); };
+    // swipe the week card to change weeks
+    const w = $('woWeekNav'); let x0 = null;
+    w.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+    w.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) (dx > 0 ? $('wPrev') : $('wNext')).click(); });
+  }
+
+  const newDraft = () => ({ id: null, name: '', notes: '', ex: [{ name: '', sets: 3, reps: 10, w: '', wu: wUnit() }] });
+  function renderPresets() {
+    let html = '';
+    const d = state.woDraft;
+    if (d) {
+      html += `<form class="sheet wo-form" id="woForm">
+        <h3>${d.id ? 'Edit workout' : 'New workout'}</h3>
+        <label>Workout name<input id="woName" maxlength="50" placeholder="e.g. Upper body A" value="${esc(d.name)}"></label>
+        <div class="ex-head"><span>Exercise</span><span>Sets</span><span>Reps</span><span>Weight (${wUnit()})</span><span></span></div>
+        ${d.ex.map((ex, i) => `<div class="ex-row" data-i="${i}">
+          <input class="ex-name" list="exList" placeholder="Exercise" value="${esc(ex.name)}" data-f="name">
+          <input class="ex-num" type="number" inputmode="numeric" min="1" max="99" value="${esc(ex.sets)}" data-f="sets" aria-label="Sets">
+          <input class="ex-num" inputmode="numeric" maxlength="7" placeholder="10" value="${esc(ex.reps)}" data-f="reps" aria-label="Reps">
+          <input class="ex-num" type="number" inputmode="decimal" step="0.5" min="0" placeholder="–" value="${ex.w === '' || ex.w == null ? '' : esc(ex.wu && ex.wu !== wUnit() ? fmtWeight(ex).split(' ')[0] : ex.w)}" data-f="w" aria-label="Weight">
+          <div class="ex-tools">
+            <button type="button" data-mv="-1" aria-label="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+            <button type="button" data-mv="1" aria-label="Move down"${i === d.ex.length - 1 ? ' disabled' : ''}>↓</button>
+            <button type="button" data-rm aria-label="Remove exercise"${d.ex.length === 1 ? ' disabled' : ''}>✕</button>
+          </div>
+        </div>`).join('')}
+        <datalist id="exList">${EX_SUGGEST.map(s => `<option value="${s}">`).join('')}</datalist>
+        <button type="button" class="linkbtn" id="exAdd">+ Add exercise</button>
+        <label style="margin-top:10px">Notes (optional)<input id="woNotes" maxlength="200" placeholder="e.g. 90 s rest between sets" value="${esc(d.notes || '')}"></label>
+        <div class="note" style="margin:-4px 0 10px">Leave weight empty for bodyweight exercises. Reps can be a range like 8-10.</div>
+        <div class="sheet-btns">
+          ${d.id ? `<button type="button" class="danger" id="woDelete">Delete</button>` : ''}
+          <button type="button" id="woCancel">Cancel</button>
+          <button type="submit" class="primary">Save workout</button>
+        </div>
+      </form>`;
+    } else html += `<button type="button" class="wide-btn primary" id="woNew">+ New workout</button>`;
+    if (wo.presets.length) {
+      html += `<h2>Your workouts</h2>` + [...wo.presets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(p => {
+        const uses = Object.values(wo.plans).reduce((s, pl) => s + pl.filter(x => x === p.id).length, 0);
+        return `<div class="wo-card">
+          <div class="wo-top"><div><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}${uses ? ` · planned ${uses}×` : ''}</small></div>
+            <div class="wo-act"><button type="button" class="linkbtn" data-copy="${p.id}">Duplicate</button><button type="button" class="linkbtn" data-edit-wo="${p.id}">Edit</button></div></div>
+          <div class="dex">${p.ex.map(ex => `<div>${exLine(ex)}</div>`).join('')}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}</div>
+        </div>`;
+      }).join('');
+    } else if (!d) html += `<div class="empty"><div class="big">No workouts yet</div>Make a preset workout once (exercises, sets, reps and weight), then drop it onto any day of your week plan.</div>`;
+    $('content').innerHTML = html;
+    if ($('woNew')) $('woNew').onclick = () => { state.woDraft = newDraft(); render(); $('woName').focus(); };
+    document.querySelectorAll('[data-edit-wo]').forEach(b => b.onclick = () => { const p = presetById(b.dataset.editWo); state.woDraft = JSON.parse(JSON.stringify(p)); render(); window.scrollTo(0, 0); });
+    document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+      const p = presetById(b.dataset.copy); const c = JSON.parse(JSON.stringify(p)); c.id = newId(); c.name = p.name + ' (copy)';
+      wo.presets.push(c); saveWo(); render();
+    });
+    const f = $('woForm');
+    if (!f) return;
+    // typing updates the draft without redrawing, so the keyboard stays put
+    f.addEventListener('input', e => {
+      const t = e.target;
+      if (t.id === 'woName') d.name = t.value;
+      else if (t.id === 'woNotes') d.notes = t.value;
+      else if (t.dataset.f) {
+        const ex = d.ex[+t.closest('.ex-row').dataset.i];
+        if (t.dataset.f === 'w') { ex.w = t.value === '' ? '' : +t.value; ex.wu = wUnit(); }
+        else ex[t.dataset.f] = t.dataset.f === 'sets' ? (t.value === '' ? '' : +t.value) : t.value;
+      }
+    });
+    $('exAdd').onclick = () => {
+      const last = d.ex[d.ex.length - 1] || {};
+      d.ex.push({ name: '', sets: last.sets || 3, reps: last.reps || 10, w: '', wu: wUnit() }); render();
+      const rows = document.querySelectorAll('.ex-row .ex-name'); rows[rows.length - 1].focus();
+    };
+    f.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+      const i = +b.closest('.ex-row').dataset.i, j = i + +b.dataset.mv; [d.ex[i], d.ex[j]] = [d.ex[j], d.ex[i]]; render();
+    });
+    f.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { d.ex.splice(+b.closest('.ex-row').dataset.i, 1); render(); });
+    const done = () => {
+      state.woDraft = null;
+      if (state.woReturn) { const r = state.woReturn; state.woReturn = null; state.woWeek = r.week; state.woPick = r.day; goHash('#workout'); } else render();
+    };
+    $('woCancel').onclick = done;
+    if ($('woDelete')) $('woDelete').onclick = () => {
+      const b = $('woDelete');
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to delete'; return; }
+      wo.presets = wo.presets.filter(p => p.id !== d.id);
+      for (const k in wo.plans) wo.plans[k] = wo.plans[k].map(x => x === d.id ? null : x);
+      saveWo(); done();
+    };
+    f.onsubmit = e => {
+      e.preventDefault();
+      d.name = d.name.trim(); d.ex = d.ex.filter(ex => (ex.name || '').trim()).map(ex => ({ ...ex, name: ex.name.trim() }));
+      if (!d.name) { $('woName').focus(); $('woName').placeholder = 'Give the workout a name'; return; }
+      if (!d.ex.length) { d.ex = [{ name: '', sets: 3, reps: 10, w: '', wu: wUnit() }]; render(); showMsg('Add at least one exercise with a name.', true); return; }
+      if (d.id) Object.assign(presetById(d.id), d);
+      else { d.id = newId(); wo.presets.push(d); if (state.woReturn) { const r = state.woReturn, k = weekKey(r.week); (wo.plans[k] || (wo.plans[k] = Array(7).fill(null)))[r.day] = d.id; } }
+      showMsg('');
+      saveWo(); done();
+    };
+  }
+
   /* ---------- One day at a time: activity hour by hour ---------- */
   function renderDay() {
     $('footer').hidden = true;
@@ -2127,10 +2338,11 @@
     let { sport, view } = routeFromHash();
     if (view === 'run' && !run) view = 'runs';
     document.body.classList.toggle('in-run', view === 'run');
-    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim');
+    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim' || sport === 'workout');
     renderNavs(sport, view);
     destroyMaps();
     if (sport === 'health') { state.shownRun = null; return view === 'sleep' ? renderSleep() : view === 'day' ? renderDay() : renderHealth(); }
+    if (sport === 'workout') { state.shownRun = null; return renderWorkout(view); }
     if (sport !== 'run') { state.shownRun = null; return renderOther(sport, view); }
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
