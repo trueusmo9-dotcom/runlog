@@ -185,6 +185,53 @@
   .hsub{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
   .hsub span{display:block;font:400 11.5px Inter;text-transform:none;letter-spacing:0;margin-top:2px}
   .morelink{display:block;margin-top:12px}
+  .cal-d .cn{position:relative}
+  .cal-d i.done{position:absolute;right:-11px;top:-3px;font:700 10px Inter;color:var(--go);font-style:normal}
+  .donebox{margin:6px 14px 8px;padding:10px 12px;border-radius:10px;background:#12291c;border:1px solid #1f4d33}
+  .donebox b{display:block;font:600 14px Inter;color:var(--go)}
+  .donebox small{font-size:12px;color:var(--muted)}
+  .donebox .dex{padding:6px 0 0}
+  .startsheet{border-color:var(--line)}
+  .exv-row{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;margin:-4px 0 6px;font-size:13px}
+  .exlib{display:flex;flex-direction:column;gap:8px}
+  .exlib-row{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .exlib-t{flex:1;min-width:0;font:600 15px Inter}
+  .exlib-t small{display:block;font:400 12px Inter;color:var(--muted);margin-top:2px}
+  .exlib-row > .linkbtn{padding-top:2px}
+  .livebar{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#12291c;border:1px solid #1f4d33;color:var(--go);font:600 13.5px Inter}
+  .live-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 10px}
+  .lv-name{all:unset;font:700 22px Inter;width:100%;border-bottom:1px dashed transparent}
+  .lv-name:focus{border-bottom-color:var(--muted)}
+  .live-top small{font-size:12px;color:var(--muted)}
+  .live-top b{font:700 34px var(--num);color:var(--accent);font-variant-numeric:tabular-nums}
+  .restbar{position:sticky;top:8px;z-index:500;display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:var(--accent);color:#1a0d06;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+  .restbar[hidden]{display:none}
+  .restbar span{font:700 13px Inter;text-transform:uppercase;letter-spacing:.6px}
+  .restbar b{font:700 26px var(--num);margin-right:auto;font-variant-numeric:tabular-nums}
+  .restbar button{all:unset;cursor:pointer;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.18);font:700 13px Inter}
+  .lv-ex{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+  .lv-exh{display:flex;align-items:flex-start;gap:6px}
+  .lv-exh > div{flex:1;min-width:0;font:600 15px Inter}
+  .lv-last{display:block;font:400 12px Inter;color:var(--muted);margin-top:3px}
+  .rt-edit.sure{width:auto;padding:0 10px;color:#ff8f8f;font:600 12px Inter}
+  .lv-sets{margin-top:8px}
+  .lv-sh,.lv-set{display:grid;grid-template-columns:34px 1fr 1fr 48px;gap:8px;align-items:center}
+  .lv-sh{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .lv-sh span:not(:first-child){text-align:center}
+  .lv-set{padding:4px 0}
+  .lv-n{font:700 15px var(--num);text-align:center;color:var(--muted)}
+  .lv-set input{width:100%;box-sizing:border-box;padding:9px 6px;text-align:center;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:600 16px Inter;-webkit-appearance:none;appearance:none}
+  .lv-ok{all:unset;cursor:pointer;height:38px;border-radius:9px;border:1px solid var(--line);text-align:center;font:700 16px Inter;color:var(--muted)}
+  .lv-set.done{background:#12291c;border-radius:10px}
+  .lv-set.done .lv-ok{background:var(--go);border-color:var(--go);color:#06210f}
+  .lv-set.done input{border-color:#1f4d33;background:#0f2017}
+  .lv-row{display:flex;justify-content:space-between;margin-top:6px}
+  .lv-add{display:flex;gap:8px;margin:4px 0 10px}
+  .lv-add input{flex:1;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font:16px Inter}
+  .lv-add button{all:unset;cursor:pointer;padding:0 16px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font:600 14px Inter}
+  .lv-rest-set{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);margin:0 2px 10px}
+  .lv-rest-set select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:15px Inter}
+  .wide-btn.danger{background:#5a1f1f;border-color:#5a1f1f;color:#fff}
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0 12px}
   .cal-h{text-align:center;font:600 11px Inter;color:var(--muted);padding:2px 0 4px}
   .cal-d{all:unset;cursor:pointer;box-sizing:border-box;min-height:58px;padding:5px 3px 4px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;-webkit-tap-highlight-color:transparent}
@@ -428,7 +475,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v24<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v25<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -1830,7 +1877,7 @@
     run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
     bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
     swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] },
-    workout: { name: 'Workout', tabs: [['week', 'Calendar', '#workout'], ['presets', 'Workouts', '#workout-presets']] }
+    workout: { name: 'Workout', tabs: [['week', 'Calendar', '#workout'], ['presets', 'Workouts', '#workout-presets'], ['exercises', 'Exercises', '#workout-exercises']], sub: [['live', '#workout-live']] }
   };
   function routeFromHash() {
     const hs = location.hash;
@@ -2046,8 +2093,20 @@
 
   /* ---------- Workouts: preset workouts + a weekly plan ---------- */
   const WO_KEY = 'runlog.workouts';
-  let wo = { presets: [], days: {} };
+  let wo = { presets: [], days: {}, library: [], log: [] };
   try { wo = Object.assign(wo, JSON.parse(localStorage.getItem(WO_KEY) || '{}')); } catch {}
+  if (!wo.library) wo.library = [];
+  if (!wo.log) wo.log = [];
+  { // v23 kept a video on each workout's exercise; v25 keeps it on the exercise in the library
+    let moved = false;
+    for (const pr of wo.presets) for (const ex of pr.ex) {
+      if (!ex.video) continue;
+      const nm = (ex.name || '').trim(), hit = wo.library.find(l => l.name.toLowerCase() === nm.toLowerCase());
+      if (hit) { if (!hit.video) hit.video = ex.video; } else if (nm) wo.library.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: nm, video: ex.video, notes: '' });
+      delete ex.video; moved = true;
+    }
+    if (moved) try { localStorage.setItem(WO_KEY, JSON.stringify(wo)); } catch {}
+  }
   if (wo.plans) { // v22 stored plans per week; v23 stores one entry per date
     for (const [wk, arr] of Object.entries(wo.plans)) arr.forEach((x, i) => {
       if (!x) return; const d = new Date(wk + 'T12:00:00'); d.setDate(d.getDate() + i);
@@ -2071,6 +2130,8 @@
     v = Math.round(v * 2) / 2;
     return `${v} ${wUnit()}`;
   }
+  const libByName = n => { const k = (n || '').trim().toLowerCase(); return k ? wo.library.find(l => l.name.toLowerCase() === k) : null; };
+  const exOptions = () => [...new Set([...wo.library.map(l => l.name).sort((a, b) => a.localeCompare(b)), ...EX_SUGGEST])].map(s => `<option value="${esc(s)}">`).join('');
   const fmtRest = s => s ? (s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`) : '';
   // Accepts youtu.be/ID, youtube.com/watch?v=ID, /shorts/ID, /embed/ID, /live/ID — returns the 11-character video id.
   function ytId(u) {
@@ -2081,7 +2142,7 @@
   const ytSearch = name => `https://www.youtube.com/results?search_query=${encodeURIComponent('how to ' + (name || 'exercise') + ' proper form')}`;
   // An exercise line, with a "How to" button when a video is linked; the player opens inline.
   function exItem(ex, key) {
-    const id = ytId(ex.video), open = state.vidOpen === key;
+    const lib = libByName(ex.name), id = ytId((lib && lib.video) || ex.video), open = state.vidOpen === key;
     return `<div class="exi"><div class="exl">${exLine(ex)}${id ? `<button type="button" class="vidbtn${open ? ' on' : ''}" data-vid="${esc(key)}">${open ? '✕ Close' : '▶ How to'}</button>` : ''}</div>
       ${id && open ? `<div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${esc(ex.name)} – how to" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div><a class="linkbtn ytopen" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Video won’t play? Open in YouTube</a>` : ''}</div>`;
   }
@@ -2094,6 +2155,8 @@
   function renderWorkout(view) {
     $('footer').hidden = true;
     if (view === 'presets') return renderPresets();
+    if (view === 'exercises') return renderExercises();
+    if (view === 'live') return renderLive();
     const now = new Date(), off = state.woMonth || 0;
     const m0 = new Date(now.getFullYear(), now.getMonth() + off, 1), daysIn = new Date(m0.getFullYear(), m0.getMonth() + 1, 0).getDate();
     const todayK = dayKey(now), lead = (m0.getDay() + 6) % 7; // Monday-first grid
@@ -2101,7 +2164,7 @@
     if (!state.woDay || !monthKeys.includes(state.woDay)) state.woDay = monthKeys.includes(todayK) ? todayK : monthKeys[0];
     const planned = monthKeys.filter(k => wo.days[k] && wo.days[k] !== 'rest' && presetById(wo.days[k])).length;
     const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-    let html = `<div class="week slim" id="woMonthNav">
+    let html = startBtnHtml() + `<div class="week slim" id="woMonthNav">
         <button class="wnav" type="button" id="mPrev" aria-label="Previous month">${arrow('M15 6l-6 6 6 6')}</button>
         <div class="wmid"><div class="wlabel">${esc(m0.toLocaleDateString(undefined, { month: 'long' }))}</div><div class="wrange">${m0.getFullYear()} · ${planned} workout${planned === 1 ? '' : 's'} planned</div></div>
         <button class="wnav" type="button" id="mNext" aria-label="Next month">${arrow('M9 6l6 6-6 6')}</button>
@@ -2113,13 +2176,16 @@
           const x = wo.days[k], p = x && x !== 'rest' ? presetById(x) : null;
           const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
           return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : x === 'rest' ? ': rest day' : ''}">
-            <span class="cn">${i + 1}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : x === 'rest' ? '<span class="cw">Rest</span>' : ''}</button>`;
+            <span class="cn">${i + 1}${doneOn(k).length ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : x === 'rest' ? '<span class="cw">Rest</span>' : ''}</button>`;
         }).join('')}
       </div>`;
     // selected day
     const k = state.woDay, x = wo.days[k], p = x && x !== 'rest' ? presetById(x) : null, dd = new Date(k + 'T12:00:00');
     html += `<div class="daypanel">
       <div class="dp-h"><b>${esc(dd.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</b>${k === todayK ? '<span class="badge">Today</span>' : ''}</div>
+      ${doneOn(k).map(l => { const exd = l.ex.filter(e => e.sets.some(x => x.done)); return `<div class="donebox"><b>✓ Completed: ${esc(l.name)}</b><small>${fmtDur((l.end - l.start) / 1000)} · ${exd.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0)} sets · ${exd.length} exercise${exd.length === 1 ? '' : 's'}</small>
+        <div class="dex">${exd.map(e => `<div class="exl">${esc(e.name)} <span>${e.sets.filter(x => x.done).map(x => (x.w !== '' && x.w != null ? fmtWeight({ w: x.w, wu: x.wu }).replace(' ' + wUnit(), '') + '×' : '') + (x.reps || '–')).join(', ')}</span></div>`).join('')}</div></div>`; }).join('')}
+      ${p && k === todayK && !state.live ? `<div style="padding:0 14px"><button type="button" class="wide-btn primary" data-start="${p.id}">Start ${esc(p.name)}</button></div>` : ''}
       ${p ? `<div class="dp-wo"><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small></div><div class="dex">${presetBody(p, 'd' + k)}</div>`
           : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>` : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick a workout below.</div>`}
       <div class="picker">
@@ -2138,10 +2204,222 @@
     });
     document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { if (b.dataset.set) wo.days[k] = b.dataset.set; else delete wo.days[k]; saveWo(); render(); });
     $('pkNew').onclick = () => { state.woReturn = { date: k, month: off }; state.woDraft = newDraft(); goHash('#workout-presets'); };
-    wireVids();
+    wireVids(); wireStart();
     const w = $('woMonthNav'); let x0 = null;
     w.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
     w.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) (dx > 0 ? $('mPrev') : $('mNext')).click(); });
+  }
+
+  /* ---------- Exercise library ---------- */
+  function renderExercises() {
+    const d = state.exDraft;
+    let html = '';
+    if (d) html += `<form class="sheet" id="exForm">
+        <h3>${d.id ? 'Edit exercise' : 'New exercise'}</h3>
+        <label>Exercise name<input id="exName" list="exList2" maxlength="50" placeholder="e.g. Bench press" value="${esc(d.name)}"></label>
+        <datalist id="exList2">${EX_SUGGEST.filter(s => !libByName(s) || (d.id && libByName(s).id === d.id)).map(s => `<option value="${s}">`).join('')}</datalist>
+        <label>How-to video (YouTube link)<input id="exVideo" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link (optional)" value="${esc(d.video || '')}"></label>
+        <div class="exv-row"><a class="linkbtn" id="exSearch" href="${ytSearch(d.name)}" target="_blank" rel="noopener">Search YouTube for “how to ${esc(d.name || '…')}”</a><span class="vidok" id="exOk">${d.video ? (ytId(d.video) ? '✓ Video linked' : 'Not a YouTube link') : ''}</span></div>
+        <div class="note" style="margin:-2px 0 10px">Find a video, tap <b>Share → Copy link</b> in YouTube, then paste it here.</div>
+        <label>Notes (optional)<input id="exNotes" maxlength="200" placeholder="e.g. Keep elbows at 45°" value="${esc(d.notes || '')}"></label>
+        <div class="sheet-btns">${d.id ? `<button type="button" class="danger" id="exDelete">Delete</button>` : ''}<button type="button" id="exCancel">Cancel</button><button type="submit" class="primary">Save exercise</button></div>
+      </form>`;
+    else html += `<button type="button" class="wide-btn primary" id="exNew">+ New exercise</button>`;
+    if (wo.library.length) {
+      const used = n => wo.presets.filter(p => p.ex.some(e => e.name.toLowerCase() === n.toLowerCase())).length;
+      html += `<h2>Your exercises</h2><div class="exlib">` + [...wo.library].sort((a, b) => a.name.localeCompare(b.name)).map(l => `<div class="exlib-row">
+          <div class="exlib-t">${exItem({ name: l.name, sets: '', reps: '' }, 'l' + l.id).replace(/<span>[^<]*<\/span>/, '')}
+            <small>${ytId(l.video) ? 'Video linked' : 'No video'}${used(l.name) ? ` · in ${used(l.name)} workout${used(l.name) === 1 ? '' : 's'}` : ''}${l.notes ? ' · ' + esc(l.notes) : ''}</small></div>
+          <button type="button" class="linkbtn" data-exedit="${l.id}">Edit</button></div>`).join('') + `</div>`;
+    } else if (!d) html += `<div class="empty"><div class="big">No exercises yet</div>Create an exercise once, add a YouTube how-to video to it, and the video shows up everywhere that exercise is used: in your workouts, the calendar, and during a workout.</div>`;
+    $('content').innerHTML = html;
+    wireVids();
+    if ($('exNew')) $('exNew').onclick = () => { state.exDraft = { id: null, name: '', video: '', notes: '' }; render(); $('exName').focus(); };
+    document.querySelectorAll('[data-exedit]').forEach(b => b.onclick = () => { state.exDraft = { ...wo.library.find(l => l.id === b.dataset.exedit) }; render(); window.scrollTo(0, 0); });
+    const f = $('exForm'); if (!f) return;
+    f.addEventListener('input', e => {
+      if (e.target.id === 'exName') { d.name = e.target.value; $('exSearch').href = ytSearch(d.name); $('exSearch').textContent = `Search YouTube for “how to ${d.name || '…'}”`; }
+      if (e.target.id === 'exVideo') { d.video = e.target.value; $('exOk').textContent = d.video.trim() ? (ytId(d.video) ? '✓ Video linked' : 'Not a YouTube link') : ''; }
+      if (e.target.id === 'exNotes') d.notes = e.target.value;
+    });
+    $('exCancel').onclick = () => { state.exDraft = null; render(); };
+    if ($('exDelete')) $('exDelete').onclick = () => {
+      const b = $('exDelete'); if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to delete'; return; }
+      wo.library = wo.library.filter(l => l.id !== d.id); saveWo(); state.exDraft = null; render();
+    };
+    f.onsubmit = e => {
+      e.preventDefault();
+      const name = d.name.trim(); if (!name) { $('exName').focus(); return; }
+      const clash = libByName(name); if (clash && clash.id !== d.id) { showMsg(`You already have an exercise called “${name}”. Edit that one instead.`, true); return; }
+      const rec = { name, video: (d.video || '').trim(), notes: (d.notes || '').trim() };
+      if (d.id) {
+        const old = wo.library.find(l => l.id === d.id);
+        if (old.name !== name) for (const pr of wo.presets) for (const ex of pr.ex) if (ex.name.toLowerCase() === old.name.toLowerCase()) ex.name = name; // renaming carries through workouts
+        Object.assign(old, rec);
+      } else wo.library.push({ id: newId(), ...rec });
+      showMsg(''); saveWo(); state.exDraft = null; render();
+    };
+  }
+
+  /* ---------- Start a workout ---------- */
+  const LIVE_KEY = 'runlog.live';
+  try { state.live = JSON.parse(localStorage.getItem(LIVE_KEY) || 'null'); } catch {}
+  const saveLive = () => { try { state.live ? localStorage.setItem(LIVE_KEY, JSON.stringify(state.live)) : localStorage.removeItem(LIVE_KEY); } catch {} };
+  const doneOn = k => wo.log.filter(l => dayKey(new Date(l.start)) === k);
+  function startBtnHtml() {
+    if (state.live) return `<button type="button" class="wide-btn primary" id="woResume">Resume workout in progress · ${esc(state.live.name)}</button>`;
+    const todays = wo.days[dayKey(new Date())], tp = todays && todays !== 'rest' ? presetById(todays) : null;
+    let html = `<button type="button" class="wide-btn primary" id="woStart">▶ Start workout</button>`;
+    if (state.startOpen) html += `<div class="sheet startsheet"><h3>Start a workout</h3>
+      ${tp ? `<button type="button" class="pk on" data-start="${tp.id}"><b>Today’s plan: ${esc(tp.name)}</b><small>${tp.ex.length} exercises</small></button>` : ''}
+      ${wo.presets.filter(p => !tp || p.id !== tp.id).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<button type="button" class="pk" data-start="${p.id}"><b>${esc(p.name)}</b><small>${p.ex.length} exercises</small></button>`).join('')}
+      <button type="button" class="pk" data-start=""><b>Empty workout</b><small>add exercises as you go</small></button>
+      <div class="pk-row"><span></span><button type="button" class="linkbtn" id="startCancel">Cancel</button></div></div>`;
+    return html;
+  }
+  function lastFor(name) { // most recent finished set list for this exercise
+    for (let i = wo.log.length - 1; i >= 0; i--) {
+      const e = wo.log[i].ex.find(x => x.name.toLowerCase() === (name || '').toLowerCase());
+      if (e && e.sets.some(s => s.done)) return { when: wo.log[i].start, sets: e.sets.filter(s => s.done) };
+    }
+    return null;
+  }
+  function startWorkout(presetId) {
+    const p = presetId ? presetById(presetId) : null;
+    state.live = { start: Date.now(), name: p ? p.name : 'Workout', presetId: p ? p.id : null, rest: p ? p.rest || 0 : 90, restEnd: null,
+      ex: p ? p.ex.map(ex => ({ name: ex.name, target: ex.reps, sets: Array.from({ length: Math.max(1, +ex.sets || 1) }, () => ({ w: ex.w === '' || ex.w == null ? '' : +fmtWeight(ex).split(' ')[0], wu: wUnit(), reps: '', done: false })) })) : [] };
+    state.startOpen = false; saveLive(); goHash('#workout-live');
+  }
+  function wireStart() {
+    if ($('woStart')) $('woStart').onclick = () => { state.startOpen = !state.startOpen; render(); };
+    if ($('woResume')) $('woResume').onclick = () => goHash('#workout-live');
+    if ($('startCancel')) $('startCancel').onclick = () => { state.startOpen = false; render(); };
+    document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
+      if (state.live) { goHash('#workout-live'); return; }
+      startWorkout(b.dataset.start);
+    });
+  }
+
+  let liveTick = null, beepNode = null, audioCtx = null;
+  function beepAt(secFromNow) { // short double beep when the rest timer ends (works while the app is open)
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx.resume && audioCtx.resume();
+      if (beepNode) { try { beepNode.stop(); } catch {} beepNode = null; }
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + Math.max(0, secFromNow);
+      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0, 0); g.gain.setValueAtTime(.25, t); g.gain.setValueAtTime(0, t + .15); g.gain.setValueAtTime(.25, t + .3); g.gain.setValueAtTime(0, t + .45);
+      o.start(); o.stop(t + .5); beepNode = o;
+    } catch {}
+  }
+  const cancelBeep = () => { if (beepNode) { try { beepNode.stop(); } catch {} beepNode = null; } };
+  function renderLive() {
+    const L = state.live;
+    if (!L) { goHash('#workout'); return; }
+    const U = wUnit();
+    const setsDone = L.ex.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0);
+    let html = `<div class="live-top">
+        <div><input id="lvName" class="lv-name" maxlength="50" value="${esc(L.name)}" aria-label="Workout name"><small>${setsDone} set${setsDone === 1 ? '' : 's'} done</small></div>
+        <b id="lvClock">0:00</b>
+      </div>
+      <div class="restbar" id="restBar" hidden><span>Rest</span><b id="restLeft">0:00</b>
+        <button type="button" data-rest="-15">−15</button><button type="button" data-rest="15">+15</button><button type="button" data-rest="skip">Skip</button></div>`;
+    L.ex.forEach((e, ei) => {
+      const last = lastFor(e.name);
+      html += `<div class="lv-ex">
+        <div class="lv-exh"><div>${exItem({ name: e.name, sets: '', reps: '' }, 'lv' + ei).replace(/<span>[^<]*<\/span>/, '')}
+          ${e.target ? `<small class="lv-last">Target: ${esc(String(e.target))} reps</small>` : ''}
+          ${last ? `<small class="lv-last">Last time (${esc(new Date(last.when).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}): ${last.sets.map(s => (s.w !== '' && s.w != null ? fmtWeight(s).replace(' ' + U, '') + '×' : '') + (s.reps || '–')).join(', ')}</small>` : ''}</div>
+          <button type="button" class="rt-edit" data-rmex="${ei}" aria-label="Remove ${esc(e.name)}">✕</button></div>
+        <div class="lv-sets"><div class="lv-sh"><span>Set</span><span>${U}</span><span>Reps</span><span></span></div>
+        ${e.sets.map((s, si) => `<div class="lv-set${s.done ? ' done' : ''}" data-e="${ei}" data-s="${si}">
+          <span class="lv-n">${si + 1}</span>
+          <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="–" value="${s.w === '' || s.w == null ? '' : esc(s.wu && s.wu !== U ? fmtWeight(s).split(' ')[0] : s.w)}" data-k="w" aria-label="Weight set ${si + 1}">
+          <input inputmode="numeric" maxlength="5" placeholder="${esc(String(e.target || ''))}" value="${esc(String(s.reps || ''))}" data-k="reps" aria-label="Reps set ${si + 1}">
+          <button type="button" class="lv-ok" data-done aria-label="Set ${si + 1} done" aria-pressed="${s.done}">✓</button>
+        </div>`).join('')}
+        <div class="lv-row"><button type="button" class="linkbtn" data-addset="${ei}">+ Add set</button>${e.sets.length > 1 ? `<button type="button" class="linkbtn danger-t" data-rmset="${ei}">Remove last set</button>` : ''}</div></div>
+      </div>`;
+    });
+    html += `<form class="lv-add" id="lvAdd"><input id="lvNew" list="exList3" placeholder="Add an exercise…" maxlength="50" autocomplete="off"><datalist id="exList3">${exOptions()}</datalist><button type="submit">Add</button></form>
+      <div class="lv-rest-set">Rest between sets <select id="lvRest">${[0, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 300].map(v => `<option value="${v}"${(L.rest || 0) === v ? ' selected' : ''}>${v ? fmtRest(v) : 'Off'}</option>`).join('')}</select></div>
+      <button type="button" class="wide-btn primary" id="lvFinish">Finish workout</button>
+      <button type="button" class="wide-btn" id="lvDiscard">Discard workout</button>`;
+    $('content').innerHTML = html;
+    wireVids();
+    // clock + rest timer
+    clearInterval(liveTick);
+    const tick = () => {
+      if (!$('lvClock')) { clearInterval(liveTick); return; }
+      $('lvClock').textContent = fmtDur((Date.now() - L.start) / 1000);
+      const left = L.restEnd ? Math.ceil((L.restEnd - Date.now()) / 1000) : 0;
+      $('restBar').hidden = left <= 0;
+      if (left > 0) $('restLeft').textContent = fmtRest(left).replace(' s', 's') || '0';
+      else if (L.restEnd) { L.restEnd = null; saveLive(); }
+    };
+    tick(); liveTick = setInterval(tick, 500);
+    const live = $('content');
+    live.oninput = ev => {
+      const t = ev.target;
+      if (t.id === 'lvName') { L.name = t.value; saveLive(); return; }
+      const row = t.closest('.lv-set'); if (!row) return;
+      const s = L.ex[+row.dataset.e].sets[+row.dataset.s];
+      if (t.dataset.k === 'w') { s.w = t.value === '' ? '' : +t.value; s.wu = U; } else s.reps = t.value;
+      saveLive();
+    };
+    live.querySelectorAll('[data-done]').forEach(b => b.onclick = () => {
+      const row = b.closest('.lv-set'), e = L.ex[+row.dataset.e], s = e.sets[+row.dataset.s];
+      s.done = !s.done;
+      if (s.done && !s.reps && e.target) s.reps = String(e.target).split(/[-–]/)[0];
+      if (s.done && L.rest) { L.restEnd = Date.now() + L.rest * 1000; beepAt(L.rest); } else if (!s.done) { L.restEnd = null; cancelBeep(); }
+      saveLive(); render();
+    });
+    live.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => {
+      if (b.dataset.rest === 'skip') { L.restEnd = null; cancelBeep(); }
+      else { L.restEnd = Math.max(Date.now(), (L.restEnd || Date.now()) + +b.dataset.rest * 1000); beepAt((L.restEnd - Date.now()) / 1000); }
+      saveLive(); tick();
+    });
+    live.querySelectorAll('[data-addset]').forEach(b => b.onclick = () => {
+      const e = L.ex[+b.dataset.addset], prev = e.sets[e.sets.length - 1] || {};
+      e.sets.push({ w: prev.w ?? '', wu: prev.wu || U, reps: '', done: false }); saveLive(); render();
+    });
+    live.querySelectorAll('[data-rmset]').forEach(b => b.onclick = () => { L.ex[+b.dataset.rmset].sets.pop(); saveLive(); render(); });
+    live.querySelectorAll('[data-rmex]').forEach(b => b.onclick = () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Remove?'; b.classList.add('sure'); setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = '✕'; b.classList.remove('sure'); } }, 2500); return; }
+      L.ex.splice(+b.dataset.rmex, 1); saveLive(); render();
+    });
+    $('lvAdd').onsubmit = ev => {
+      ev.preventDefault(); const n = $('lvNew').value.trim(); if (!n) return;
+      const last = lastFor(n), ls = last && last.sets[last.sets.length - 1];
+      L.ex.push({ name: n, target: '', sets: [{ w: ls && ls.w !== '' ? +fmtWeight(ls).split(' ')[0] : '', wu: U, reps: '', done: false }] });
+      saveLive(); render(); window.scrollTo(0, document.body.scrollHeight);
+    };
+    $('lvRest').onchange = ev => { L.rest = +ev.target.value; saveLive(); };
+    $('lvFinish').onclick = () => {
+      const done = L.ex.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0);
+      const b = $('lvFinish');
+      if (!done && !b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'No sets ticked yet — tap again to finish anyway'; return; }
+      const rec = { id: newId(), start: L.start, end: Date.now(), name: L.name.trim() || 'Workout', presetId: L.presetId, rest: L.rest,
+        ex: L.ex.map(e => ({ name: e.name, sets: e.sets.map(s => ({ w: s.w, wu: s.wu, reps: s.reps, done: s.done })) })) };
+      wo.log.push(rec); saveWo();
+      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep();
+      state.woMonth = 0; state.woDay = dayKey(new Date(rec.start));
+      showMsg(`Workout saved: ${esc(rec.name)} · ${fmtDur((rec.end - rec.start) / 1000)} · ${done} sets.`);
+      goHash('#workout');
+    };
+    $('lvDiscard').onclick = () => {
+      const b = $('lvDiscard');
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to discard this workout'; b.classList.add('danger'); return; }
+      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep(); goHash('#workout');
+    };
+  }
+  function liveBanner(view) {
+    if (!state.live || view === 'live' || document.body.classList.contains('in-run')) return;
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'livebar';
+    el.innerHTML = `<span>● Workout in progress · ${esc(state.live.name)}</span><b>Resume ›</b>`;
+    el.onclick = () => goHash('#workout-live');
+    $('content').prepend(el);
   }
 
   const newDraft = () => ({ id: null, name: '', notes: '', rest: 90, ex: [{ name: '', sets: 3, reps: 10, w: '', wu: wUnit(), video: '' }] });
@@ -2159,40 +2437,35 @@
           <input class="ex-num" type="number" inputmode="numeric" min="1" max="99" value="${esc(ex.sets)}" data-f="sets" aria-label="Sets">
           <input class="ex-num" inputmode="numeric" maxlength="7" placeholder="10" value="${esc(ex.reps)}" data-f="reps" aria-label="Reps">
           <input class="ex-num" type="number" inputmode="decimal" step="0.5" min="0" placeholder="–" value="${ex.w === '' || ex.w == null ? '' : esc(ex.wu && ex.wu !== wUnit() ? fmtWeight(ex).split(' ')[0] : ex.w)}" data-f="w" aria-label="Weight">
-          <div class="ex-vid">
-            <input class="ex-url" inputmode="url" autocomplete="off" placeholder="YouTube link (optional)" value="${esc(ex.video || '')}" data-f="video" aria-label="YouTube video link">
-            <a class="linkbtn yts" href="${ytSearch(ex.name)}" target="_blank" rel="noopener" data-yts>Search YouTube</a>
-            <span class="vidok">${ex.video ? (ytId(ex.video) ? '✓ Video linked' : 'Not a YouTube link') : ''}</span>
-          </div>
           <div class="ex-tools">
             <button type="button" data-mv="-1" aria-label="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
             <button type="button" data-mv="1" aria-label="Move down"${i === d.ex.length - 1 ? ' disabled' : ''}>↓</button>
             <button type="button" data-rm aria-label="Remove exercise"${d.ex.length === 1 ? ' disabled' : ''}>✕</button>
           </div>
         </div>`).join('')}
-        <datalist id="exList">${EX_SUGGEST.map(s => `<option value="${s}">`).join('')}</datalist>
+        <datalist id="exList">${exOptions()}</datalist>
         <button type="button" class="linkbtn" id="exAdd">+ Add exercise</button>
         <label style="margin-top:10px">Notes (optional)<input id="woNotes" maxlength="200" placeholder="e.g. Warm up with 2 light sets first" value="${esc(d.notes || '')}"></label>
-        <div class="note" style="margin:-4px 0 10px">Leave weight empty for bodyweight exercises. Reps can be a range like 8-10.</div>
+        <div class="note" style="margin:-4px 0 10px">Leave weight empty for bodyweight exercises. Reps can be a range like 8-10. Add how-to videos to exercises in the <b>Exercises</b> tab.</div>
         <div class="sheet-btns">
           ${d.id ? `<button type="button" class="danger" id="woDelete">Delete</button>` : ''}
           <button type="button" id="woCancel">Cancel</button>
           <button type="submit" class="primary">Save workout</button>
         </div>
       </form>`;
-    } else html += `<button type="button" class="wide-btn primary" id="woNew">+ New workout</button>`;
+    } else html += startBtnHtml() + `<button type="button" class="wide-btn" id="woNew">+ New workout</button>`;
     if (wo.presets.length) {
       html += `<h2>Your workouts</h2>` + [...wo.presets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(p => {
         const uses = Object.values(wo.days).filter(x => x === p.id).length;
         return `<div class="wo-card">
           <div class="wo-top"><div><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}${uses ? ` · planned ${uses}×` : ''}</small></div>
-            <div class="wo-act"><button type="button" class="linkbtn" data-copy="${p.id}">Duplicate</button><button type="button" class="linkbtn" data-edit-wo="${p.id}">Edit</button></div></div>
+            <div class="wo-act"><button type="button" class="linkbtn" data-start="${p.id}">Start</button><button type="button" class="linkbtn" data-copy="${p.id}">Duplicate</button><button type="button" class="linkbtn" data-edit-wo="${p.id}">Edit</button></div></div>
           <div class="dex">${presetBody(p, 'p' + p.id)}</div>
         </div>`;
       }).join('');
     } else if (!d) html += `<div class="empty"><div class="big">No workouts yet</div>Make a preset workout once (exercises, sets, reps and weight), then drop it onto any day of your week plan.</div>`;
     $('content').innerHTML = html;
-    wireVids();
+    wireVids(); wireStart();
     if ($('woNew')) $('woNew').onclick = () => { state.woDraft = newDraft(); render(); $('woName').focus(); };
     document.querySelectorAll('[data-edit-wo]').forEach(b => b.onclick = () => { const p = presetById(b.dataset.editWo); state.woDraft = JSON.parse(JSON.stringify(p)); render(); window.scrollTo(0, 0); });
     document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
@@ -2211,8 +2484,6 @@
         if (t.dataset.f === 'w') { ex.w = t.value === '' ? '' : +t.value; ex.wu = wUnit(); }
         else ex[t.dataset.f] = t.dataset.f === 'sets' ? (t.value === '' ? '' : +t.value) : t.value;
         const row = t.closest('.ex-row');
-        if (t.dataset.f === 'name') row.querySelector('[data-yts]').href = ytSearch(t.value);
-        if (t.dataset.f === 'video') row.querySelector('.vidok').textContent = t.value.trim() ? (ytId(t.value) ? '✓ Video linked' : 'Not a YouTube link') : '';
       }
     });
     $('woRest').onchange = e => { d.rest = +e.target.value; };
@@ -2239,7 +2510,7 @@
     };
     f.onsubmit = e => {
       e.preventDefault();
-      d.name = d.name.trim(); d.ex = d.ex.filter(ex => (ex.name || '').trim()).map(ex => ({ ...ex, name: ex.name.trim(), video: (ex.video || '').trim() }));
+      d.name = d.name.trim(); d.ex = d.ex.filter(ex => (ex.name || '').trim()).map(ex => { const o = { ...ex, name: ex.name.trim() }; delete o.video; return o; });
       if (!d.name) { $('woName').focus(); $('woName').placeholder = 'Give the workout a name'; return; }
       if (!d.ex.length) { d.ex = [{ name: '', sets: 3, reps: 10, w: '', wu: wUnit(), video: '' }]; render(); showMsg('Add at least one exercise with a name.', true); return; }
       if (d.id) Object.assign(presetById(d.id), d);
@@ -2403,6 +2674,11 @@
   const currentRunId = () => { const m = location.hash.match(/^#run-([a-z0-9]+)$/); return m ? m[1] : null; };
 
   function render() {
+    renderView();
+    liveBanner(routeFromHash().view);
+  }
+  function renderView() {
+    $('content').oninput = null;
     document.querySelectorAll('header .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
     const id = currentRunId(), run = id && state.runs.find(r => r.id === id);
     let { sport, view } = routeFromHash();
