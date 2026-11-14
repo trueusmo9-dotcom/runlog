@@ -334,7 +334,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v18<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v19<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -355,6 +355,7 @@
     for (const r of state.runs) if (r.route && r.route.some(p => p[1] > 180 || p[0] > 90)) {
       r.route = r.route.map(p => roundPt(fixPt(p))); repaired = true;
     }
+    for (const r of state.runs) if (r.hrBySrc && r.hrSeries) { delete r.hrSeries; repaired = true; }
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
     try { localStorage.removeItem(INV_KEY); } catch {}
@@ -635,7 +636,7 @@
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
     const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
-    const extra = { hrT: [], hrV: [], hrP: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
+    const extra = { hrT: [], hrV: [], hrP: [], hrN: [], hrNames: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
@@ -653,7 +654,11 @@
           if (H_SUM[type] || H_AVG[type] || type === SLEEP_T) collectHealth(extra.health, type, tag);
           if (type === 'HKQuantityTypeIdentifierHeartRate') {
             const t = parseHealthDate(getAttr(tag, 'startDate')), v = parseFloat(getAttr(tag, 'value'));
-            if (isFinite(t) && isFinite(v)) { extra.hrT.push(t); extra.hrV.push(v); extra.hrP.push(isPolar(getAttr(tag, 'sourceName')) ? 1 : 0); }
+            if (isFinite(t) && isFinite(v)) {
+              const sn = unesc(getAttr(tag, 'sourceName'));
+              let ni = extra.hrNames.indexOf(sn); if (ni < 0) { ni = extra.hrNames.length; extra.hrNames.push(sn); }
+              extra.hrT.push(t); extra.hrV.push(v); extra.hrP.push(isPolar(sn) ? 1 : 0); extra.hrN.push(ni);
+            }
           } else if (type === 'HKQuantityTypeIdentifierRunningSpeed' || type === 'HKQuantityTypeIdentifierRunningStrideLength') {
             extra[type.endsWith('Speed') ? 'speed' : 'stride'].push({ t0: parseHealthDate(getAttr(tag, 'startDate')), t1: parseHealthDate(getAttr(tag, 'endDate')), v: getAttr(tag, 'value'), unit: getAttr(tag, 'unit') });
           }
@@ -749,19 +754,39 @@
     const shorter = Math.min(endOf(a) - a.start, endOf(b) - b.start);
     return shorter > 0 && e > s ? (e - s) / shorter : 0;
   }
-  function hrSet(pts) {
-    return { avg: Math.round(pts.reduce((s, p) => s + p[1], 0) / pts.length), max: Math.round(Math.max(...pts.map(p => p[1]))),
+  function hrSet(pts, from) {
+    return { from: from || '', avg: Math.round(pts.reduce((s, p) => s + p[1], 0) / pts.length), max: Math.round(Math.max(...pts.map(p => p[1]))),
       series: thin(pts, 360).map(([s, v]) => [Math.round(s), Math.round(v)]) };
   }
   // Heart rate actually shown for a run: the one picked with the switch, else Polar, else the watch.
   function hrOf(r) {
     const S = Object.assign({}, r.hrBySrc || {});
-    if (!S.watch && r.hrSeries) S.watch = { series: r.hrSeries, avg: r.hr, max: r.hrMax }; // runs imported before v18
+    if (!r.hrBySrc && r.hrSeries) S.watch = { series: r.hrSeries, avg: r.hr, max: r.hrMax, from: 'an earlier import' }; // runs imported before v18
     const keys = ['polar', 'watch'].filter(k => S[k]);
     const pick = r.hrPick && S[r.hrPick] ? r.hrPick : keys[0] || null;
     const cur = pick ? S[pick] : null;
-    return { pick, keys, series: cur ? cur.series : null, avg: cur ? cur.avg : r.hr || 0, max: cur ? cur.max : r.hrMax || 0 };
+    return { pick, keys, from: cur ? cur.from : '', series: cur ? cur.series : null, avg: cur ? cur.avg : r.hr || 0, max: cur ? cur.max : r.hrMax || 0 };
   }
+  // True when two heart-rate lines are really the same data (e.g. Polar's session also synced through Strava).
+  function sameHr(a, b) {
+    if (!a || !b || a.series.length < 10 || b.series.length < 10) return false;
+    let n = 0, close = 0, j = 0;
+    for (const [t, v] of a.series) {
+      while (j + 1 < b.series.length && b.series[j + 1][0] <= t) j++;
+      const p = b.series[j], q = b.series[j + 1];
+      if (!q || t < p[0]) continue;
+      const bv = p[1] + (q[0] > p[0] ? (t - p[0]) / (q[0] - p[0]) : 0) * (q[1] - p[1]);
+      n++; if (Math.abs(bv - v) <= 1.5) close++;
+    }
+    return n >= 10 && close / n >= 0.9;
+  }
+  function dedupeHr(r) {
+    const S = r.hrBySrc;
+    if (S && S.polar && S.watch && sameHr(S.polar, S.watch)) { r.hrDupFrom = S.watch.from; delete S.watch; }
+    if (r.hrBySrc) { delete r.hrSeries; const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max; }
+  }
+  const shiftHr = (set, sec) => sec ? { ...set, series: set.series.map(([t, v]) => [Math.round(t + sec), v]) } : set;
+
   // A run recorded on both devices shows up twice in Apple Health: merge them, keeping the watch as the main recording.
   function combineRuns(list) {
     const out = [];
@@ -778,17 +803,19 @@
 
   function enrichRuns(runs, x) {
     if (!x) return;
-    let T = x.hrT, V = x.hrV, P = x.hrP, sorted = true;
+    let T = x.hrT, V = x.hrV, P = x.hrP, N = x.hrN, sorted = true;
     for (let i = 1; i < T.length; i++) if (T[i] < T[i - 1]) { sorted = false; break; }
-    if (!sorted) { const idx = T.map((_, i) => i).sort((p, q) => T[p] - T[q]); T = idx.map(i => x.hrT[i]); V = idx.map(i => x.hrV[i]); P = idx.map(i => x.hrP[i]); }
+    if (!sorted) { const idx = T.map((_, i) => i).sort((p, q) => T[p] - T[q]); T = idx.map(i => x.hrT[i]); V = idx.map(i => x.hrV[i]); P = idx.map(i => x.hrP[i]); N = idx.map(i => x.hrN[i]); }
     for (const r of runs) {
       const a = r.hrWin ? r.hrWin[0] : r.start, b = r.hrWin ? r.hrWin[1] : endOf(r);
-      const by = { watch: [], polar: [] };
-      for (let i = lowerBound(T, a); i < T.length && T[i] <= b; i++) by[P[i] ? 'polar' : 'watch'].push([(T[i] - r.start) / 1000, V[i]]);
-      for (const k of ['watch', 'polar']) {
-        const pts = by[k].filter(p => p[0] >= -60); // keep readings from a minute before the watch start
-        if (pts.length >= 3) (r.hrBySrc || (r.hrBySrc = {}))[k] = hrSet(pts);
+      const by = { watch: [], polar: [] }, names = { watch: new Set(), polar: new Set() };
+      for (let i = lowerBound(T, a); i < T.length && T[i] <= b; i++) {
+        const k = P[i] ? 'polar' : 'watch';
+        if ((T[i] - r.start) / 1000 >= -60) { by[k].push([(T[i] - r.start) / 1000, V[i]]); names[k].add(x.hrNames[N[i]]); }
       }
+      for (const k of ['watch', 'polar'])
+        if (by[k].length >= 3) (r.hrBySrc || (r.hrBySrc = {}))[k] = hrSet(by[k], [...names[k]].join(', ') + ' via Apple Health');
+      dedupeHr(r);
       if (r.hrBySrc) { const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max; }
       delete r.hrWin;
       const near = list => list.find(o => isFinite(o.t0) && o.t0 >= a - 120000 && o.t0 <= b + 120000);
@@ -923,7 +950,7 @@
     const hp = [];
     for (let i = 0; i < S.t.length; i++) if (S.hr[i] > 30 && S.hr[i] < 250 && isFinite(S.t[i])) hp.push([(S.t[i] - start) / 1000, S.hr[i]]);
     if (hp.length >= 3) {
-      r.hrBySrc = { [isPolar(source) ? 'polar' : 'watch']: hrSet(hp) };
+      r.hrBySrc = { [isPolar(source) ? 'polar' : 'watch']: hrSet(hp, source === 'Strava' ? 'a Strava file' : source + (/file$/.test(source) ? '' : ' file')) };
       const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max;
     } else { if (m.hrAvg) r.hr = m.hrAvg; if (m.hrMax) r.hrMax = m.hrMax; }
     // Running files store cadence per foot, so double it for steps per minute.
@@ -991,7 +1018,12 @@
       if (r.route && (!existing.route || (r.prof && !existing.prof))) existing.route = r.route;
       for (const f of ['distance', 'duration', 'kcal', 'end', 'hr', 'hrMax', 'hrSeries', 'stride', 'speedAvg', 'prof', 'gpsDist', 'cadenceSpm', 'name'])
         if (!existing[f] && r[f]) existing[f] = r[f];
-      if (r.hrBySrc) existing.hrBySrc = Object.assign(existing.hrBySrc || {}, r.hrBySrc);
+      if (r.hrBySrc) {
+        const off = (r.start - existing.start) / 1000;
+        const add = {}; for (const [k, v] of Object.entries(r.hrBySrc)) add[k] = shiftHr(v, off);
+        existing.hrBySrc = Object.assign(existing.hrBySrc || {}, add);
+        dedupeHr(existing);
+      }
       if (r.source && existing.source && !existing.source.includes(r.source)) existing.source += ' + ' + r.source;
       return false;
     }
@@ -2219,7 +2251,7 @@
         yTicks: (lo, hi) => niceTicks(Math.max(40, lo - 5), hi + 5, 4), yFmt: v => Math.round(v),
         xTicks: niceTimeTicks, xFmt: v => Math.round(v / 60) + ' min',
         tip: p => `<b>${p[1]} bpm</b><span>at ${mmss(p[0])}</span>`
-      }) + `<div class="note">From ${hrNow.pick === 'polar' ? 'your Polar chest strap (Polar Beat)' : 'your watch'}${hrNow.keys.length > 1 ? ` · ${hrNow.pick === 'polar' ? 'Watch' : 'Polar'} avg ${hrOf({ ...r, hrPick: hrNow.keys.find(k => k !== hrNow.pick) }).avg} bpm` : ''}.</div>` + zonesHtml(hrNow.series);
+      }) + `<div class="note">${hrNow.pick === 'polar' ? 'Polar chest strap' : 'Watch'} heart rate, from ${esc(hrOf(r).from || (hrNow.pick === 'polar' ? 'Polar Beat' : 'your watch'))}${hrNow.keys.length > 1 ? ` · ${hrNow.pick === 'polar' ? 'Watch' : 'Polar'} avg ${hrOf({ ...r, hrPick: hrNow.keys.find(k => k !== hrNow.pick) }).avg} bpm` : ''}.</div>` + (r.hrDupFrom && hrNow.keys.length === 1 ? `<div class="note">The heart rate from ${esc(r.hrDupFrom)} was an exact copy of the Polar data, so only Polar is shown.</div>` : '') + zonesHtml(hrNow.series);
     } else {
       html += `<div class="note">No heart-rate readings found for this run. Import your Health export.zip again to look for them.</div>`;
     }
