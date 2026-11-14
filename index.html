@@ -247,6 +247,22 @@
   .kchip{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0;border-radius:10px;background:var(--card);border:1px solid var(--line);font:600 12.5px Inter;color:var(--muted)}
   .kchip.on{border-color:var(--accent);color:var(--text)}
   .kchip.k-run svg{color:#ffb38f}.kchip.k-bike svg{color:#7fd3f0}.kchip.k-swim svg{color:#9db4ff}
+  .wtoggle{display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin:0 0 8px}
+  .wtoggle .seg button{padding:4px 10px;font-size:12.5px}
+  .lv-track{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .lv-track > div{background:var(--card2);border-radius:9px;padding:6px 9px;font-weight:400}
+  .lv-track > div.pr{background:#2a1a12}
+  .lv-track small{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .lv-track b{display:block;font:700 16px var(--num)}
+  .lv-track i{font-style:normal;font-size:11px;color:var(--muted)}
+  .lv-track .pr b{color:var(--accent2)}
+  .exlib-t small b{color:var(--text);font-weight:600}
+  .exlib-t > .linkbtn{display:inline-block;margin-top:4px;font-size:13px}
+  .dtiles.two{grid-template-columns:1fr 1fr}
+  .lift-h{font:700 22px Inter;margin:4px 0 6px}
+  .dtile i.sub{display:block;font-style:normal;font-size:11px;color:var(--muted)}
+  .lift-sets{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;font:500 13px Inter}
+  .lift-sets .pr{color:var(--accent2);font-weight:700}
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0 12px}
   .cal-h{text-align:center;font:600 11px Inter;color:var(--muted);padding:2px 0 4px}
   .cal-d{all:unset;cursor:pointer;box-sizing:border-box;min-height:58px;padding:5px 3px 4px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;-webkit-tap-highlight-color:transparent}
@@ -490,7 +506,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v26<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v27<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -1892,7 +1908,7 @@
     run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
     bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
     swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] },
-    workout: { name: 'Workout', tabs: [['week', 'Calendar', '#workout'], ['presets', 'Workouts', '#workout-presets'], ['exercises', 'Exercises', '#workout-exercises']], sub: [['live', '#workout-live']] }
+    workout: { name: 'Workout', tabs: [['week', 'Calendar', '#workout'], ['presets', 'Workouts', '#workout-presets'], ['exercises', 'Exercises', '#workout-exercises']], sub: [['live', '#workout-live'], ['lift', '#workout-lift']] }
   };
   function routeFromHash() {
     const hs = location.hash;
@@ -2136,7 +2152,34 @@
   const EX_SUGGEST = ['Bench press', 'Incline bench press', 'Dumbbell press', 'Overhead press', 'Shoulder press', 'Lateral raise', 'Squat', 'Front squat', 'Leg press', 'Lunge',
     'Bulgarian split squat', 'Deadlift', 'Romanian deadlift', 'Hip thrust', 'Leg curl', 'Leg extension', 'Calf raise', 'Barbell row', 'Dumbbell row', 'Seated row', 'Lat pulldown',
     'Pull-up', 'Chin-up', 'Push-up', 'Dip', 'Bicep curl', 'Hammer curl', 'Tricep pushdown', 'Skull crusher', 'Face pull', 'Plank', 'Crunch', 'Hanging leg raise', 'Russian twist', 'Cable crunch'];
-  const wUnit = () => state.unit === 'km' ? 'kg' : 'lb';
+  try { state.wunit = localStorage.getItem('runlog.wunit') === 'kg' ? 'kg' : 'lb'; } catch { state.wunit = 'lb'; }
+  const wUnit = () => state.wunit || 'lb';
+  const wToggle = () => `<div class="wtoggle"><span>Weights in</span><div class="seg" role="group" aria-label="Weight unit">${['lb', 'kg'].map(u => `<button type="button" data-wunit="${u}" aria-pressed="${wUnit() === u}">${u}</button>`).join('')}</div></div>`;
+  const wireWToggle = () => document.querySelectorAll('[data-wunit]').forEach(b => b.onclick = () => {
+    state.wunit = b.dataset.wunit; try { localStorage.setItem('runlog.wunit', state.wunit); } catch {} render();
+  });
+  const toKg = s => s.w === '' || s.w == null ? 0 : (s.wu === 'lb' ? +s.w * 0.45359237 : +s.w);
+  const fmtSet = s => `${s.w !== '' && s.w != null && +s.w > 0 ? fmtWeight(s) : 'Bodyweight'} × ${s.reps || '–'}`;
+  // Heaviest finished set ever for an exercise (ties go to more reps)
+  function allTimeBest(name) {
+    let best = null; const n = (name || '').toLowerCase();
+    for (const l of wo.log) for (const e of l.ex) if (e.name.toLowerCase() === n) for (const s of e.sets) {
+      if (!s.done) continue;
+      const kg = toKg(s), r = parseInt(s.reps) || 0;
+      if (!best || kg > best.kg + 1e-6 || (Math.abs(kg - best.kg) < 1e-6 && r > best.r)) best = { ...s, kg, r, when: l.start };
+    }
+    return best;
+  }
+  // First finished set of this exercise in the most recent workout that had it
+  function lastFirstSet(name) {
+    const n = (name || '').toLowerCase();
+    for (let i = wo.log.length - 1; i >= 0; i--) {
+      const e = wo.log[i].ex.find(x => x.name.toLowerCase() === n), s = e && e.sets.find(x => x.done);
+      if (s) return { ...s, when: wo.log[i].start };
+    }
+    return null;
+  }
+  const shortDate = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   // Weights are kept in the unit they were typed in, and converted only for display.
   function fmtWeight(ex) {
     if (ex.w == null || ex.w === '') return '';
@@ -2175,6 +2218,7 @@
     if (view === 'presets') return renderPresets();
     if (view === 'exercises') return renderExercises();
     if (view === 'live') return renderLive();
+    if (view === 'lift') return renderLift();
     const now = new Date(), off = state.woMonth || 0;
     const m0 = new Date(now.getFullYear(), now.getMonth() + off, 1), daysIn = new Date(m0.getFullYear(), m0.getMonth() + 1, 0).getDate();
     const todayK = dayKey(now), lead = (m0.getDay() + 6) % 7; // Monday-first grid
@@ -2234,6 +2278,36 @@
   }
 
   /* ---------- Exercise library ---------- */
+  function renderLift() {
+    const name = state.liftName || '', n = name.toLowerCase();
+    const sessions = wo.log.map(l => ({ l, e: l.ex.find(x => x.name.toLowerCase() === n) })).filter(x => x.e && x.e.sets.some(s => s.done)).sort((a, b) => a.l.start - b.l.start);
+    const back = `<button class="back" id="liftBack" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Exercises</button>`;
+    if (!sessions.length) { $('content').innerHTML = back + `<div class="empty"><div class="big">No history yet</div>Finish a workout with ${esc(name || 'this exercise')} to start tracking it.</div>`; $('liftBack').onclick = () => goHash('#workout-exercises'); return; }
+    const best = allTimeBest(name), lf = lastFirstSet(name), U = wUnit();
+    const top = ({ e }) => e.sets.filter(s => s.done).reduce((m, s) => toKg(s) > toKg(m) ? s : m, e.sets.find(s => s.done));
+    const conv = kg => U === 'kg' ? kg : kg / 0.45359237;
+    const pts = sessions.map((x, i) => [i, Math.round(conv(toKg(top(x))) * 2) / 2]);
+    const est = s => toKg(s) * (1 + (parseInt(s.reps) || 1) / 30); // Epley estimate of a one-rep max
+    const e1 = Math.max(...sessions.flatMap(x => x.e.sets.filter(s => s.done && parseInt(s.reps) <= 12).map(est)), 0);
+    let html = wToggle() + back + `<div class="lift-h">${exItem({ name, sets: '', reps: '' }, 'lift').replace(/<span>[^<]*<\/span>/, '')}</div>
+      <div class="dtiles two">
+        <div class="dtile on"><small>All-time best</small><b>${best && best.kg ? `${fmtWeight(best).replace(' ' + U, '')}<i>${U} × ${best.reps}</i>` : 'BW'}</b><i class="sub">${esc(shortDate(best.when))}</i></div>
+        <div class="dtile"><small>Last time, set 1</small><b>${lf.w !== '' && +lf.w ? `${fmtWeight(lf).replace(' ' + U, '')}<i>${U} × ${lf.reps}</i>` : 'BW × ' + lf.reps}</b><i class="sub">${esc(shortDate(lf.when))}</i></div>
+        <div class="dtile"><small>Sessions</small><b>${sessions.length}</b><i class="sub">since ${esc(shortDate(sessions[0].l.start))}</i></div>
+        ${e1 > 0 ? `<div class="dtile"><small>Est. 1-rep max</small><b>${Math.round(conv(e1))}<i>${U}</i></b><i class="sub">from your sets</i></div>` : ''}
+      </div>`;
+    if (pts.length > 1 && pts.some(p => p[1] > 0)) html += `<div class="hcard"><div class="hhead"><span>Heaviest set each workout</span></div>` + lineChart('lift', pts, {
+      label: 'Heaviest set per workout', color: '#ff6b35', area: false,
+      yTicks: (lo, hi) => niceTicks(Math.max(0, lo - (hi - lo || 10) * .3), hi + (hi - lo || 10) * .3, 3), yFmt: v => Math.round(v),
+      xTicks: () => sessions.map((_, i) => i).filter(i => i % Math.ceil(sessions.length / 5) === 0), xFmt: i => esc(shortDate(sessions[i].l.start)),
+      tip: p => `<b>${p[1]} ${U} × ${top(sessions[p[0]]).reps}</b><span>${esc(shortDate(sessions[p[0]].l.start))}</span>`
+    }) + `</div>`;
+    html += `<h2>History</h2><div class="exlib">` + [...sessions].reverse().map(({ l, e }) => `<div class="exlib-row"><div class="exlib-t">${esc(new Date(l.start).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))}
+        <small>${esc(l.name)}</small><div class="lift-sets">${e.sets.filter(s => s.done).map((s, i) => `<span${best && l.start === best.when && Math.abs(toKg(s) - best.kg) < 1e-6 && (parseInt(s.reps) || 0) === best.r ? ' class="pr"' : ''}>${i + 1}. ${fmtSet(s)}</span>`).join('')}</div></div></div>`).join('') + `</div>`;
+    $('content').innerHTML = html;
+    $('liftBack').onclick = () => goHash('#workout-exercises');
+    wireVids(); wireWToggle(); wireCharts();
+  }
   function renderExercises() {
     const d = state.exDraft;
     let html = '';
@@ -2248,16 +2322,26 @@
         <div class="sheet-btns">${d.id ? `<button type="button" class="danger" id="exDelete">Delete</button>` : ''}<button type="button" id="exCancel">Cancel</button><button type="submit" class="primary">Save exercise</button></div>
       </form>`;
     else html += `<button type="button" class="wide-btn primary" id="exNew">+ New exercise</button>`;
-    if (wo.library.length) {
+    // every exercise you've saved or logged
+    const names = new Map();
+    wo.library.forEach(l => names.set(l.name.toLowerCase(), l.name));
+    wo.log.forEach(l => l.ex.forEach(e => { if (e.sets.some(s => s.done) && !names.has(e.name.toLowerCase())) names.set(e.name.toLowerCase(), e.name); }));
+    if (names.size) {
       const used = n => wo.presets.filter(p => p.ex.some(e => e.name.toLowerCase() === n.toLowerCase())).length;
-      html += `<h2>Your exercises</h2><div class="exlib">` + [...wo.library].sort((a, b) => a.name.localeCompare(b.name)).map(l => `<div class="exlib-row">
-          <div class="exlib-t">${exItem({ name: l.name, sets: '', reps: '' }, 'l' + l.id).replace(/<span>[^<]*<\/span>/, '')}
-            <small>${ytId(l.video) ? 'Video linked' : 'No video'}${used(l.name) ? ` · in ${used(l.name)} workout${used(l.name) === 1 ? '' : 's'}` : ''}${l.notes ? ' · ' + esc(l.notes) : ''}</small></div>
-          <button type="button" class="linkbtn" data-exedit="${l.id}">Edit</button></div>`).join('') + `</div>`;
+      html += `<h2>Your exercises</h2><div class="exlib">` + [...names.values()].sort((a, b) => a.localeCompare(b)).map(name => {
+        const l = libByName(name), best = allTimeBest(name), sessions = wo.log.filter(x => x.ex.some(e => e.name.toLowerCase() === name.toLowerCase() && e.sets.some(s => s.done))).length;
+        return `<div class="exlib-row">
+          <div class="exlib-t">${exItem({ name, sets: '', reps: '' }, 'l' + name).replace(/<span>[^<]*<\/span>/, '')}
+            <small>${best ? `Best <b>${fmtSet(best)}</b> · ${sessions} session${sessions === 1 ? '' : 's'}` : 'Not logged yet'}${used(name) ? ` · in ${used(name)} workout${used(name) === 1 ? '' : 's'}` : ''}${l && l.notes ? ' · ' + esc(l.notes) : ''}</small>
+            ${sessions ? `<button type="button" class="linkbtn" data-lift="${esc(name)}">See progress ›</button>` : ''}</div>
+          ${l ? `<button type="button" class="linkbtn" data-exedit="${l.id}">Edit</button>` : `<button type="button" class="linkbtn" data-exadd="${esc(name)}">Add video</button>`}</div>`;
+      }).join('') + `</div>`;
     } else if (!d) html += `<div class="empty"><div class="big">No exercises yet</div>Create an exercise once, add a YouTube how-to video to it, and the video shows up everywhere that exercise is used: in your workouts, the calendar, and during a workout.</div>`;
     $('content').innerHTML = html;
     wireVids();
     if ($('exNew')) $('exNew').onclick = () => { state.exDraft = { id: null, name: '', video: '', notes: '' }; render(); $('exName').focus(); };
+    document.querySelectorAll('[data-exadd]').forEach(b => b.onclick = () => { state.exDraft = { id: null, name: b.dataset.exadd, video: '', notes: '' }; render(); window.scrollTo(0, 0); $('exVideo').focus(); });
+    document.querySelectorAll('[data-lift]').forEach(b => b.onclick = () => { state.liftName = b.dataset.lift; goHash('#workout-lift'); });
     document.querySelectorAll('[data-exedit]').forEach(b => b.onclick = () => { state.exDraft = { ...wo.library.find(l => l.id === b.dataset.exedit) }; render(); window.scrollTo(0, 0); });
     const f = $('exForm'); if (!f) return;
     f.addEventListener('input', e => {
@@ -2287,6 +2371,12 @@
   /* ---------- Start a workout ---------- */
   const LIVE_KEY = 'runlog.live';
   try { state.live = JSON.parse(localStorage.getItem(LIVE_KEY) || 'null'); } catch {}
+  if (!wo.lbFix) { // before v27 the weight label followed km/mi and showed "kg"; numbers were typed as pounds
+    const fix = s => { if (s && s.wu === 'kg') s.wu = 'lb'; };
+    wo.presets.forEach(p => p.ex.forEach(fix)); wo.log.forEach(l => l.ex.forEach(e => e.sets.forEach(fix)));
+    if (state.live) { state.live.ex.forEach(e => e.sets.forEach(fix)); try { localStorage.setItem(LIVE_KEY, JSON.stringify(state.live)); } catch {} }
+    wo.lbFix = true; try { localStorage.setItem(WO_KEY, JSON.stringify(wo)); } catch {}
+  }
   const saveLive = () => { try { state.live ? localStorage.setItem(LIVE_KEY, JSON.stringify(state.live)) : localStorage.removeItem(LIVE_KEY); } catch {} };
   const doneOn = k => wo.log.filter(l => dayKey(new Date(l.start)) === k);
   function startBtnHtml() {
@@ -2341,18 +2431,19 @@
     if (!L) { goHash('#workout'); return; }
     const U = wUnit();
     const setsDone = L.ex.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0);
-    let html = `<div class="live-top">
+    let html = wToggle() + `<div class="live-top">
         <div><input id="lvName" class="lv-name" maxlength="50" value="${esc(L.name)}" aria-label="Workout name"><small>${setsDone} set${setsDone === 1 ? '' : 's'} done</small></div>
         <b id="lvClock">0:00</b>
       </div>
       <div class="restbar" id="restBar" hidden><span>Rest</span><b id="restLeft">0:00</b>
         <button type="button" data-rest="-15">−15</button><button type="button" data-rest="15">+15</button><button type="button" data-rest="skip">Skip</button></div>`;
     L.ex.forEach((e, ei) => {
-      const last = lastFor(e.name);
+      const lf = lastFirstSet(e.name), best = allTimeBest(e.name);
       html += `<div class="lv-ex">
         <div class="lv-exh"><div>${exItem({ name: e.name, sets: '', reps: '' }, 'lv' + ei).replace(/<span>[^<]*<\/span>/, '')}
           ${e.target ? `<small class="lv-last">Target: ${esc(String(e.target))} reps</small>` : ''}
-          ${last ? `<small class="lv-last">Last time (${esc(new Date(last.when).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}): ${last.sets.map(s => (s.w !== '' && s.w != null ? fmtWeight(s).replace(' ' + U, '') + '×' : '') + (s.reps || '–')).join(', ')}</small>` : ''}</div>
+          ${lf || best ? `<div class="lv-track">${lf ? `<div><small>Last time, set 1</small><b>${fmtSet(lf)}</b><i>${esc(shortDate(lf.when))}</i></div>` : ''}${best ? `<div class="pr"><small>All-time best</small><b>${fmtSet(best)}</b><i>${esc(shortDate(best.when))}</i></div>` : ''}</div>`
+            : `<small class="lv-last">First time logging this exercise.</small>`}</div>
           <button type="button" class="rt-edit" data-rmex="${ei}" aria-label="Remove ${esc(e.name)}">✕</button></div>
         <div class="lv-sets"><div class="lv-sh"><span>Set</span><span>${U}</span><span>Reps</span><span></span></div>
         ${e.sets.map((s, si) => `<div class="lv-set${s.done ? ' done' : ''}" data-e="${ei}" data-s="${si}">
@@ -2369,7 +2460,7 @@
       <button type="button" class="wide-btn primary" id="lvFinish">Finish workout</button>
       <button type="button" class="wide-btn" id="lvDiscard">Discard workout</button>`;
     $('content').innerHTML = html;
-    wireVids();
+    wireVids(); wireWToggle();
     // clock + rest timer
     clearInterval(liveTick);
     const tick = () => {
@@ -2394,6 +2485,7 @@
       const row = b.closest('.lv-set'), e = L.ex[+row.dataset.e], s = e.sets[+row.dataset.s];
       s.done = !s.done;
       if (s.done && !s.reps && e.target) s.reps = String(e.target).split(/[-–]/)[0];
+      if (s.done) { const b0 = allTimeBest(e.name); if (b0 && toKg(s) > b0.kg + 1e-6) showMsg(`New all-time best on ${esc(e.name)}: ${fmtSet(s)} 🎉`); }
       if (s.done && L.rest) { L.restEnd = Date.now() + L.rest * 1000; beepAt(L.rest); } else if (!s.done) { L.restEnd = null; cancelBeep(); }
       saveLive(); render();
     });
@@ -2447,7 +2539,7 @@
 
   const newDraft = () => ({ id: null, name: '', notes: '', rest: 90, ex: [{ name: '', sets: 3, reps: 10, w: '', wu: wUnit(), video: '' }] });
   function renderPresets() {
-    let html = '';
+    let html = wToggle();
     const d = state.woDraft;
     if (d) {
       html += `<form class="sheet wo-form" id="woForm">
@@ -2488,7 +2580,7 @@
       }).join('');
     } else if (!d) html += `<div class="empty"><div class="big">No workouts yet</div>Make a preset workout once (exercises, sets, reps and weight), then drop it onto any day of your week plan.</div>`;
     $('content').innerHTML = html;
-    wireVids(); wireStart();
+    wireVids(); wireStart(); wireWToggle();
     if ($('woNew')) $('woNew').onclick = () => { state.woDraft = newDraft(); render(); $('woName').focus(); };
     document.querySelectorAll('[data-edit-wo]').forEach(b => b.onclick = () => { const p = presetById(b.dataset.editWo); state.woDraft = JSON.parse(JSON.stringify(p)); render(); window.scrollTo(0, 0); });
     document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
