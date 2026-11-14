@@ -148,6 +148,13 @@
   .kmlab{min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#0e1013;color:#eef0f3;font:700 10.5px Inter;display:flex;align-items:center;justify-content:center;border:1.5px solid #ffb38f}
   .pp-pop{font:13px Inter;color:#0e1013;text-align:center}
   .pp-pop button{margin-top:6px;padding:6px 10px;border:0;border-radius:8px;background:#5a1f1f;color:#fff;font:600 13px Inter}
+  .sports{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 10px}
+  .sports button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--muted);font:600 12.5px Inter;-webkit-tap-highlight-color:transparent}
+  .sports button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a0d06}
+  body.in-run .sports{display:none}
+  .empty.soon svg{color:var(--accent);margin-bottom:6px}
+  .soon-tag{display:inline-block;margin-top:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);font:600 11px Inter;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+  .rec-h b.dim{color:var(--muted)}
   .tabs{display:flex;gap:6px;margin:0 0 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
   .tabs button{all:unset;flex:1;text-align:center;padding:9px 0;border-radius:9px;font:600 14px Inter;color:var(--muted);cursor:pointer}
   .tabs button[aria-pressed="true"]{background:var(--card2);color:var(--text)}
@@ -261,11 +268,8 @@
     </div>
   </header>
 
-  <nav class="tabs" aria-label="Sections">
-    <button type="button" data-tab="runs">Runs</button>
-    <button type="button" data-tab="records">Records</button>
-    <button type="button" data-tab="plan">Plan</button>
-  </nav>
+  <nav class="sports" id="sports" aria-label="Sport"></nav>
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
 
   <button class="import" id="importBtn" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
@@ -296,7 +300,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v14<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v15<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -1082,7 +1086,7 @@
     const [a, b] = periodRange(state.period, state.periodOffset);
     return runs.filter(r => r.start >= a && r.start < b);
   }
-  function periodHtml(runs, inPeriod) {
+  function periodHtml(runs, inPeriod, noun = 'Run', distFmt = null) {
     const oldest = runs.length ? Math.min(...runs.map(r => r.start)) : NaN;
     const maxBack = periodMaxBack(state.period, oldest);
     state.periodOffset = Math.min(Math.max(0, state.periodOffset), maxBack);
@@ -1098,8 +1102,8 @@
         <div class="wlabel">${label}</div>
         <div class="wrange">${esc(sub)}</div>
         <div class="wstats">
-          <div><div class="wv">${inPeriod.length}</div><div class="wk">Run${inPeriod.length === 1 ? '' : 's'}</div></div>
-          <div><div class="wv">${fmtDist(dist)}<small>${state.unit}</small></div><div class="wk">Distance</div></div>
+          <div><div class="wv">${inPeriod.length}</div><div class="wk">${noun}${inPeriod.length === 1 ? '' : 's'}</div></div>
+          <div><div class="wv">${distFmt ? distFmt(dist) : `${fmtDist(dist)}<small>${state.unit}</small>`}</div><div class="wk">Distance</div></div>
         </div>
       </div>
       ${navs ? `<button class="wnav" type="button" data-week="newer" aria-label="Next"${state.periodOffset === 0 ? ' disabled' : ''}>${arrow('M9 6l6 6-6 6')}</button>` : ''}
@@ -1507,16 +1511,75 @@
     });
   }
 
+  /* ---------- sports: Running (live), Biking & Swimming (layout only for now) ---------- */
+  const ICONS = {
+    run: '<path d="M13 4.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/><path d="M7 21l3-6 3 2v5"/><path d="M6 12l3-4 4 1 2 3 3 1"/><path d="M10 15l1.5-5"/>',
+    bike: '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5l4-7h5l4 7M9.5 9.5L12 16.5h-3M14.5 9.5l-1-3h-2"/>',
+    swim: '<path d="M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l5-5 3 2 3 3"/>'
+  };
+  const SPORTS = {
+    run: { name: 'Running', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
+    bike: { name: 'Biking', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
+    swim: { name: 'Swimming', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] }
+  };
+  function routeFromHash() {
+    const hs = location.hash;
+    if (/^#run-/.test(hs)) return { sport: 'run', view: 'run' };
+    for (const [sport, s] of Object.entries(SPORTS)) for (const [view, , hash] of s.tabs) if (hash && hash === hs) return { sport, view };
+    return { sport: 'run', view: 'runs' };
+  }
+  function goHash(hash) { history.replaceState(null, '', hash || location.pathname + location.search); window.scrollTo(0, 0); render(); }
+  function renderNavs(sport, view) {
+    $('sports').innerHTML = Object.entries(SPORTS).map(([k, s]) =>
+      `<button type="button" data-sport="${k}" aria-pressed="${k === sport}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg><span>${s.name}</span></button>`).join('');
+    $('tabs').innerHTML = SPORTS[sport].tabs.map(([v, label, hash]) =>
+      `<button type="button" data-hash="${hash}" aria-pressed="${v === view}">${label}</button>`).join('');
+    $('sports').querySelectorAll('[data-sport]').forEach(b => b.onclick = () => {
+      try { localStorage.setItem('runlog.sport', b.dataset.sport); } catch {}
+      goHash(SPORTS[b.dataset.sport].tabs[0][2]);
+    });
+    $('tabs').querySelectorAll('[data-hash]').forEach(b => b.onclick = () => goHash(b.dataset.hash));
+  }
+
+  // Placeholder screens for the sports that have no data yet.
+  const fmtSwim = m => state.unit === 'km' ? `${Math.round(m).toLocaleString()}<small>m</small>` : `${Math.round(m / 0.9144).toLocaleString()}<small>yd</small>`;
+  function comingSoon(icon, title, text) {
+    return `<div class="empty soon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[icon]}</svg>
+      <div class="big">${title}</div>${text}<div class="soon-tag">Coming soon</div></div>`;
+  }
+  function recordShell(list, noun) {
+    return `<h2>Personal records</h2><div class="note" style="margin:-4px 2px 12px">Your fastest time for each distance will appear here.</div>` +
+      list.map(name => `<div class="rec"><div class="rec-h"><span>${name}</span><b class="dim">–</b></div><div class="note">No ${noun} yet.</div></div>`).join('');
+  }
+  function renderOther(sport, view) {
+    $('footer').hidden = true;
+    let html = '';
+    if (sport === 'bike') {
+      if (view === 'rides') html = periodHtml([], [], 'Ride') + `<h2>Rides</h2>` +
+        comingSoon('bike', 'No rides yet', 'Your bike rides will show up here with distance, time, speed, route and heart rate.');
+      else if (view === 'records') html = recordShell(['10 km', '20 km', '40 km · Olympic', '90 km · Half Ironman', '180 km · Ironman'], 'rides');
+      else html = comingSoon('bike', 'Plan a ride', 'Draw a bike route on the map and see its distance, just like planning a run.');
+    } else {
+      if (view === 'swims') html = periodHtml([], [], 'Swim', fmtSwim) + `<h2>Swims</h2>` +
+        comingSoon('swim', 'No swims yet', 'Your pool and open-water swims will show up here with distance, time and pace per 100.');
+      else html = recordShell(['100 m', '400 m', '750 m · Sprint', '1,500 m · Olympic', '1.9 km · Half Ironman', '3.8 km · Ironman'], 'swims');
+    }
+    $('content').innerHTML = html;
+    wireWeek();
+  }
+
   const currentRunId = () => { const m = location.hash.match(/^#run-([a-z0-9]+)$/); return m ? m[1] : null; };
 
   function render() {
     document.querySelectorAll('header .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
     const id = currentRunId(), run = id && state.runs.find(r => r.id === id);
-    const view = run ? 'run' : location.hash === '#records' ? 'records' : location.hash === '#plan' ? 'plan' : 'runs';
+    let { sport, view } = routeFromHash();
+    if (view === 'run' && !run) view = 'runs';
     document.body.classList.toggle('in-run', view === 'run');
-    document.body.classList.toggle('in-records', view === 'records' || view === 'plan');
-    document.querySelectorAll('.tabs [data-tab]').forEach(t => t.setAttribute('aria-pressed', t.dataset.tab === view));
+    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport !== 'run');
+    renderNavs(sport, view);
     destroyMaps();
+    if (sport !== 'run') { state.shownRun = null; return renderOther(sport, view); }
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
     if (view === 'plan') { const y = window.scrollY; renderPlan(); window.scrollTo(0, y); return; }
@@ -1583,10 +1646,6 @@
     else { history.replaceState(null, '', location.pathname + location.search); render(); }
   }
   window.addEventListener('hashchange', () => { if (!currentRunId()) state.cameFromList = false; render(); });
-  document.querySelectorAll('.tabs [data-tab]').forEach(t => t.onclick = () => {
-    history.replaceState(null, '', t.dataset.tab === 'runs' ? location.pathname + location.search : '#' + t.dataset.tab);
-    window.scrollTo(0, 0); render();
-  });
 
   function wireInventory() {
     const d = document.querySelector('details.inv');
@@ -1886,6 +1945,7 @@
   $('noClear').onclick = () => { $('clearBtn').hidden = false; $('confirm').classList.remove('show'); };
   $('yesClear').onclick = () => { state.runs = []; state.open.clear(); state.inventory = null; try { localStorage.removeItem(INV_KEY); } catch {} save(); $('noClear').onclick(); showMsg(''); render(); };
 
+  try { const sp = localStorage.getItem('runlog.sport'); if (!location.hash && sp && sp !== 'run' && SPORTS[sp]) history.replaceState(null, '', SPORTS[sp].tabs[0][2]); } catch {}
   load(); render(); fillCities();
 })();
 </script>
