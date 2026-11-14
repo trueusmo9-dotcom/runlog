@@ -92,7 +92,27 @@
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .grid .stat{background:var(--card2);border-radius:10px;padding:8px 10px}
   .grid .stat .v{font-size:17px;white-space:nowrap}
-  .week{display:flex;align-items:center;gap:6px;margin:20px 0 6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px;touch-action:pan-y}
+  .tabs{display:flex;gap:6px;margin:0 0 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .tabs button{all:unset;flex:1;text-align:center;padding:9px 0;border-radius:9px;font:600 14px Inter;color:var(--muted);cursor:pointer}
+  .tabs button[aria-pressed="true"]{background:var(--card2);color:var(--text)}
+  body.in-run .tabs{display:none}
+  body.in-records .import, body.in-records details.help, body.in-records #msg, body.in-records #status{display:none!important}
+  .seg.period{margin:20px 0 0;display:flex}
+  .seg.period button{flex:1;text-align:center;padding:7px 0}
+  .city{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-top:3px}
+  .rec{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px 6px;margin-bottom:10px}
+  .rec-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .rec-h span{font:600 13px Inter;text-transform:uppercase;letter-spacing:.8px;color:var(--accent)}
+  .rec-h b{font:700 26px var(--num)}
+  .rec .note{margin:0 0 8px}
+  .rec-row{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  .rec-row:active{background:var(--card2)}
+  .rk{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:600 12px Inter;background:var(--card2);color:var(--muted)}
+  .rk.gold{background:var(--accent);color:#1a0d06}
+  .rd{font-size:13.5px}
+  .rd small{display:block;font-size:11.5px;color:var(--muted)}
+  .rt{font:600 19px var(--num)}
+  .week{display:flex;align-items:center;gap:6px;margin:8px 0 6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px;touch-action:pan-y}
   .wnav{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--text)}
   .wnav:active{background:var(--card2)}
   .wnav[disabled]{opacity:.25;cursor:default}
@@ -164,6 +184,7 @@
   .inv-d{font-size:11.5px;color:var(--muted)}
   .inv-c{font:600 18px var(--num);white-space:nowrap;text-align:right}
   .inv-c small{display:block;font:500 10.5px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  footer[hidden]{display:none!important}
   footer{margin-top:28px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
   footer button{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline}
   .confirm{display:none;gap:8px;align-items:center}
@@ -183,6 +204,11 @@
       <button data-unit="mi" aria-pressed="false">mi</button>
     </div>
   </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" data-tab="runs">Runs</button>
+    <button type="button" data-tab="records">Records</button>
+  </nav>
 
   <button class="import" id="importBtn" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
@@ -213,7 +239,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v11</span>
+    <span>Saved on this device only · v12<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -224,7 +250,7 @@
 <script>
 (() => {
   const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory';
-  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190, weekOffset: 0, listScroll: null, cameFromList: false, shownRun: null };
+  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190, period: 'week', periodOffset: 0, listScroll: null, cameFromList: false, shownRun: null, cityBusy: false };
   const $ = id => document.getElementById(id);
 
   /* ---------- storage ---------- */
@@ -237,6 +263,7 @@
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
     try { localStorage.removeItem(INV_KEY); } catch {}
+    try { const pd = localStorage.getItem('runlog.period'); if (['week', 'month', 'year', 'all'].includes(pd)) state.period = pd; } catch {}
     try { const m = parseInt(localStorage.getItem('runlog.maxhr'), 10); if (m >= 140 && m <= 230) state.maxHr = m; } catch {}
   }
   function save() {
@@ -972,32 +999,63 @@
     const right = a.getMonth() === b.getMonth() ? b.getDate() : b.toLocaleDateString(undefined, o);
     return `${left} – ${right}, ${b.getFullYear()}`;
   }
-  function weekHtml(runs) {
-    const thisWeek = weekStart(Date.now());
-    const oldest = runs.length ? weekStart(Math.min(...runs.map(r => r.start))) : thisWeek;
-    const maxBack = Math.max(0, Math.round((thisWeek - oldest) / (7 * 86400000)));
-    state.weekOffset = Math.min(Math.max(0, state.weekOffset), maxBack);
-    const ws = addWeeks(thisWeek, -state.weekOffset), we = addWeeks(ws, 1);
-    const inWeek = runs.filter(r => r.start >= ws && r.start < we);
-    const dist = inWeek.reduce((s, r) => s + (r.distance || 0), 0);
-    const label = state.weekOffset === 0 ? 'This week' : state.weekOffset === 1 ? 'Last week' : `${state.weekOffset} weeks ago`;
+  /* ---------- period summary: week / month / year / all time ---------- */
+  function periodRange(kind, off) {
+    const now = new Date();
+    if (kind === 'week') { const ws = addWeeks(weekStart(Date.now()), -off); return [ws, addWeeks(ws, 1)]; }
+    if (kind === 'month') return [new Date(now.getFullYear(), now.getMonth() - off, 1).getTime(), new Date(now.getFullYear(), now.getMonth() - off + 1, 1).getTime()];
+    if (kind === 'year') return [new Date(now.getFullYear() - off, 0, 1).getTime(), new Date(now.getFullYear() - off + 1, 0, 1).getTime()];
+    return [-Infinity, Infinity];
+  }
+  function periodMaxBack(kind, oldest) {
+    if (kind === 'all' || !isFinite(oldest)) return 0;
+    let n = 0; while (n < 2000 && periodRange(kind, n)[0] > oldest) n++;
+    return n;
+  }
+  function periodLabels(kind, off, runs) {
+    const [a] = periodRange(kind, off);
+    if (kind === 'week') return [off === 0 ? 'This week' : off === 1 ? 'Last week' : `${off} weeks ago`, weekRangeLabel(a)];
+    if (kind === 'month') return [off === 0 ? 'This month' : off === 1 ? 'Last month' : `${off} months ago`, new Date(a).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })];
+    if (kind === 'year') return [off === 0 ? 'This year' : off === 1 ? 'Last year' : `${off} years ago`, String(new Date(a).getFullYear())];
+    const first = runs.length ? Math.min(...runs.map(r => r.start)) : Date.now();
+    return ['All time', 'Since ' + new Date(first).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })];
+  }
+  const PERIOD_NAMES = { week: 'this week', month: 'this month', year: 'this year', all: '' };
+  function periodRuns(runs) {
+    const [a, b] = periodRange(state.period, state.periodOffset);
+    return runs.filter(r => r.start >= a && r.start < b);
+  }
+  function periodHtml(runs, inPeriod) {
+    const oldest = runs.length ? Math.min(...runs.map(r => r.start)) : NaN;
+    const maxBack = periodMaxBack(state.period, oldest);
+    state.periodOffset = Math.min(Math.max(0, state.periodOffset), maxBack);
+    const [label, sub] = periodLabels(state.period, state.periodOffset, runs);
+    const dist = inPeriod.reduce((s, r) => s + (r.distance || 0), 0);
     const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-    return `<div class="week" id="week">
-      <button class="wnav" type="button" data-week="older" aria-label="Previous week"${state.weekOffset >= maxBack ? ' disabled' : ''}>${arrow('M15 6l-6 6 6 6')}</button>
+    const navs = state.period !== 'all';
+    const seg = ['week', 'month', 'year', 'all'].map(k => `<button type="button" data-period="${k}" aria-pressed="${state.period === k}">${{ week: 'Week', month: 'Month', year: 'Year', all: 'All time' }[k]}</button>`).join('');
+    return `<div class="seg period" role="group" aria-label="Show runs by">${seg}</div>
+    <div class="week" id="week">
+      ${navs ? `<button class="wnav" type="button" data-week="older" aria-label="Previous"${state.periodOffset >= maxBack ? ' disabled' : ''}>${arrow('M15 6l-6 6 6 6')}</button>` : ''}
       <div class="wmid">
         <div class="wlabel">${label}</div>
-        <div class="wrange">${esc(weekRangeLabel(ws))}</div>
+        <div class="wrange">${esc(sub)}</div>
         <div class="wstats">
-          <div><div class="wv">${inWeek.length}</div><div class="wk">Run${inWeek.length === 1 ? '' : 's'}</div></div>
+          <div><div class="wv">${inPeriod.length}</div><div class="wk">Run${inPeriod.length === 1 ? '' : 's'}</div></div>
           <div><div class="wv">${fmtDist(dist)}<small>${state.unit}</small></div><div class="wk">Distance</div></div>
         </div>
       </div>
-      <button class="wnav" type="button" data-week="newer" aria-label="Next week"${state.weekOffset === 0 ? ' disabled' : ''}>${arrow('M9 6l6 6-6 6')}</button>
+      ${navs ? `<button class="wnav" type="button" data-week="newer" aria-label="Next"${state.periodOffset === 0 ? ' disabled' : ''}>${arrow('M9 6l6 6-6 6')}</button>` : ''}
     </div>`;
   }
   function wireWeek() {
+    document.querySelectorAll('[data-period]').forEach(b => b.onclick = () => {
+      state.period = b.dataset.period; state.periodOffset = 0;
+      try { localStorage.setItem('runlog.period', state.period); } catch {}
+      render();
+    });
     const w = $('week'); if (!w) return;
-    w.querySelectorAll('[data-week]').forEach(b => b.onclick = () => { state.weekOffset += b.dataset.week === 'older' ? 1 : -1; render(); });
+    w.querySelectorAll('[data-week]').forEach(b => b.onclick = () => { state.periodOffset += b.dataset.week === 'older' ? 1 : -1; render(); });
     let x0 = null, y0 = null;
     w.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
     w.addEventListener('touchend', e => {
@@ -1009,15 +1067,110 @@
     });
   }
 
+  /* ---------- records: fastest efforts inside any run ---------- */
+  const RECORD_DISTS = [
+    { key: '1k', name: '1 km', m: 1000 }, { key: 'mile', name: '1 mile', m: 1609.344 }, { key: '5k', name: '5 km', m: 5000 },
+    { key: '10k', name: '10 km', m: 10000 }, { key: 'half', name: 'Half marathon', m: 21097.5 }, { key: 'full', name: 'Marathon', m: 42195 }
+  ];
+  // Fastest time to cover D metres anywhere in the run (sliding window over the distance/time profile).
+  function bestEffort(prof, D) {
+    if (!prof || prof.length < 2 || prof[prof.length - 1][0] < D * 0.999) return null;
+    let best = Infinity, j = 0;
+    for (let i = 1; i < prof.length; i++) {
+      const target = prof[i][0] - D; if (target < 0) continue;
+      while (j + 1 < i && prof[j + 1][0] <= target) j++;
+      const [d0, t0] = prof[j], [d1, t1] = prof[j + 1];
+      const ts = t0 + (d1 > d0 ? (target - d0) / (d1 - d0) : 0) * (t1 - t0);
+      if (prof[i][1] - ts > 0) best = Math.min(best, prof[i][1] - ts);
+    }
+    return isFinite(best) && best / D * 1000 >= 150 ? best : null; // ignore GPS glitches faster than 2:30/km
+  }
+  function recordsFor(D) {
+    const out = [];
+    for (const r of state.runs) {
+      if (r.source === 'Sample' && state.runs.some(x => x.source !== 'Sample')) continue;
+      let t = bestEffort(r.prof, D), est = false;
+      if (t == null && !r.prof && r.distance >= D * 0.995 && r.duration) { t = r.duration * D / r.distance; est = true; }
+      if (t != null) out.push({ r, t, est });
+    }
+    return out.sort((a, b) => a.t - b.t).slice(0, 10);
+  }
+  function renderRecords() {
+    $('footer').hidden = true;
+    const U = state.unit;
+    let html = `<h2>Personal records</h2><div class="note" style="margin:-4px 2px 12px">Your fastest time for each distance, taken from the quickest stretch of any run.</div>`;
+    let any = false;
+    for (const d of RECORD_DISTS) {
+      const list = recordsFor(d.m);
+      if (!list.length && d.m > 10000) continue;
+      any = any || list.length > 0;
+      html += `<div class="rec"><div class="rec-h"><span>${d.name}</span>${list[0] ? `<b>${fmtDur(list[0].t)}</b>` : ''}</div>`;
+      if (!list.length) html += `<div class="note">No run this long yet.</div>`;
+      list.forEach((x, i) => {
+        html += `<a class="rec-row" href="#run-${x.r.id}">
+          <span class="rk${i === 0 ? ' gold' : ''}">${i + 1}</span>
+          <span class="rd">${esc(new Date(x.r.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}${x.r.city ? ' · ' + esc(x.r.city) : ''}<small>${fmtPace(x.t, d.m)} /${U}${x.est ? ' · whole-run average' : ''}</small></span>
+          <span class="rt">${fmtDur(x.t)}</span></a>`;
+      });
+      html += `</div>`;
+    }
+    if (!state.runs.length) html = `<div class="empty"><div class="big">No records yet</div>Import some runs and your best times will show up here.</div>`;
+    $('content').innerHTML = html;
+  }
+
+  /* ---------- city names (OpenStreetMap Nominatim, cached, 1 request per second max) ---------- */
+  const CITY_KEY = 'runlog.cities';
+  let cityCache = {};
+  try { cityCache = JSON.parse(localStorage.getItem(CITY_KEY) || '{}'); } catch {}
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function fillCities() {
+    if (state.cityBusy || typeof fetch === 'undefined') return;
+    state.cityBusy = true;
+    let changed = false;
+    try {
+      for (const r of [...state.runs].sort((a, b) => b.start - a.start)) {
+        if (r.city !== undefined || !r.route || r.route.length < 2) continue;
+        const p = r.route[Math.floor(r.route.length / 2)];
+        const key = p[0].toFixed(2) + ',' + p[1].toFixed(2); // ~1 km: a rough point mid-route, never your start
+        if (!(key in cityCache)) {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=en&lat=${p[0].toFixed(2)}&lon=${p[1].toFixed(2)}`);
+            if (!res.ok) break;
+            const a = (await res.json()).address || {};
+            const place = a.city || a.town || a.village || a.municipality || a.hamlet || a.county || '';
+            const iso = a['ISO3166-2-lvl4'] || '';
+            const region = /^(CA|US)-/.test(iso) ? iso.split('-')[1] : (a.country || '');
+            cityCache[key] = place ? (region ? `${place}, ${region}` : place) : '';
+            try { localStorage.setItem(CITY_KEY, JSON.stringify(cityCache)); } catch {}
+          } catch { break; } // offline: try again next time the app opens
+          await sleep(1100);
+        }
+        r.city = cityCache[key];
+        changed = true;
+      }
+    } finally {
+      state.cityBusy = false;
+      if (changed) { save(); if (!document.querySelector('.chart .tip:not([hidden])')) render(); }
+    }
+  }
+
   const currentRunId = () => { const m = location.hash.match(/^#run-([a-z0-9]+)$/); return m ? m[1] : null; };
 
   function render() {
     document.querySelectorAll('header .seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
     const id = currentRunId(), run = id && state.runs.find(r => r.id === id);
-    document.body.classList.toggle('in-run', !!run);
+    const view = run ? 'run' : location.hash === '#records' ? 'records' : 'runs';
+    document.body.classList.toggle('in-run', view === 'run');
+    document.body.classList.toggle('in-records', view === 'records');
+    document.querySelectorAll('.tabs [data-tab]').forEach(t => t.setAttribute('aria-pressed', t.dataset.tab === view));
     destroyMaps();
-    if (run) return renderRun(run);
+    if (view === 'run') return renderRun(run);
     state.shownRun = null;
+    if (view === 'records') {
+      renderRecords();
+      if (state.listScroll != null) { window.scrollTo(0, state.listScroll); state.listScroll = null; }
+      return;
+    }
     const runs = [...state.runs].sort((a, b) => b.start - a.start);
     $('footer').hidden = !runs.length;
     if (!runs.length) {
@@ -1028,13 +1181,15 @@
       return;
     }
     const U = state.unit;
-    let html = weekHtml(runs) + `<h2>All runs</h2>`;
-    for (const r of runs) {
+    const shown = periodRuns(runs);
+    let html = periodHtml(runs, shown) + `<h2>${state.period === 'all' ? 'All runs' : 'Runs ' + (state.periodOffset === 0 ? PERIOD_NAMES[state.period] : 'in this ' + state.period)}</h2>`;
+    if (!shown.length) html += `<div class="note" style="margin:0 2px 8px">No runs in this ${state.period}.</div>`;
+    for (const r of shown) {
       const badge = r.indoor ? '<span class="badge">Treadmill</span>' : (r.source === 'Sample' ? '<span class="badge">Sample</span>' : '');
       html += `<a class="run" href="#run-${r.id}" data-id="${r.id}">
         <div class="top">
           <div class="info">
-            <div class="when">${esc(fmtDate(r.start))} ${badge}</div>
+            <div class="when">${esc(fmtDate(r.start))}${r.city ? ' · ' + esc(r.city) : ''} ${badge}</div>
             <div class="dist">${r.distance ? fmtDist(r.distance) : '–'}<small>${U}</small></div>
             <div class="stats">
               <div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div>
@@ -1059,6 +1214,7 @@
       <button class="back" id="backBtn" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>All runs</button>
       ${r.name ? `<div class="rname">${esc(r.name)}</div>` : ''}
       <div class="when">${esc(fmtDate(r.start))} ${badge}</div>
+      ${r.city ? `<div class="city"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>${esc(r.city)}</div>` : ''}
       <div class="dist big">${r.distance ? fmtDist(r.distance) : '–'}<small>${U}</small></div>
       ${detailHtml(r)}
     </div>`;
@@ -1073,6 +1229,10 @@
     else { history.replaceState(null, '', location.pathname + location.search); render(); }
   }
   window.addEventListener('hashchange', () => { if (!currentRunId()) state.cameFromList = false; render(); });
+  document.querySelectorAll('.tabs [data-tab]').forEach(t => t.onclick = () => {
+    history.replaceState(null, '', t.dataset.tab === 'records' ? '#records' : location.pathname + location.search);
+    window.scrollTo(0, 0); render();
+  });
 
   function wireInventory() {
     const d = document.querySelector('details.inv');
@@ -1349,7 +1509,7 @@
     } catch (err) {
       showMsg(esc(err.message || 'Something went wrong reading that file.'), true);
     } finally {
-      $('importBtn').disabled = false; clearStatus(); render();
+      $('importBtn').disabled = false; clearStatus(); render(); fillCities();
     }
   };
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
@@ -1358,7 +1518,7 @@
   $('content').addEventListener('click', e => {
     const del = e.target.closest('[data-del]');
     if (del) { state.runs = state.runs.filter(r => r.id !== del.dataset.del); save(); goToList(); return; }
-    const card = e.target.closest('a.run');
+    const card = e.target.closest('a.run, a.rec-row');
     if (card) { state.listScroll = window.scrollY; state.cameFromList = true; }
   });
   $('content').addEventListener('change', e => {
@@ -1372,7 +1532,7 @@
   $('noClear').onclick = () => { $('clearBtn').hidden = false; $('confirm').classList.remove('show'); };
   $('yesClear').onclick = () => { state.runs = []; state.open.clear(); state.inventory = null; try { localStorage.removeItem(INV_KEY); } catch {} save(); $('noClear').onclick(); showMsg(''); render(); };
 
-  load(); render();
+  load(); render(); fillCities();
 })();
 </script>
 </body>
