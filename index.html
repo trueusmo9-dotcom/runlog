@@ -102,6 +102,44 @@
   .plan-btns button:disabled{opacity:.35;cursor:default}
   .plan-btns button[aria-pressed="true"]{background:var(--accent);color:#1a0d06;border-color:var(--accent)}
   .plan-btns button[data-sure]{background:#5a1f1f;border-color:#5a1f1f}
+  .savebar{margin:4px 0 8px}
+  .editing{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:8px;flex-wrap:wrap}
+  .editing b{color:var(--text)}
+  .linkbtn{all:unset;cursor:pointer;color:var(--accent);font:600 13.5px Inter;padding:4px 0}
+  .savebtns{display:flex;gap:8px}
+  .savebtns button{all:unset;flex:1;text-align:center;padding:12px 0;border-radius:10px;background:var(--card);border:1px solid var(--line);font:600 15px Inter;cursor:pointer;color:var(--text)}
+  .savebtns button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .savebtns button:disabled{opacity:.35;cursor:default}
+  .sheet{background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:14px;margin:10px 0}
+  .sheet h3{font:600 15px Inter;margin:0 0 10px}
+  .sheet label[hidden]{display:none}
+  .sheet label{display:block;font-size:12px;color:var(--muted);margin-bottom:10px}
+  .sheet input,.sheet select{display:block;width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:16px Inter;-webkit-appearance:none;appearance:none}
+  .sheet select{background-image:linear-gradient(45deg,transparent 50%,#8a919c 50%),linear-gradient(135deg,#8a919c 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+  .sheet-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .sheet-btns button{all:unset;cursor:pointer;padding:10px 14px;border-radius:10px;border:1px solid var(--line);font:600 14px Inter;color:var(--text)}
+  .sheet-btns button.primary{background:var(--accent);border-color:var(--accent);color:#1a0d06}
+  .sheet-btns button.danger{margin-right:auto;color:#ff8f8f;border-color:#5a1f1f}
+  .sheet-btns button.danger[data-sure]{background:#5a1f1f;color:#fff}
+  .lib{margin-top:18px}
+  .lib-h{display:flex;justify-content:space-between;align-items:center}
+  .lib-h h2{margin:12px 2px 8px}
+  .folder{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;padding:2px 6px 2px 10px}
+  .folder.loose{padding-top:2px}
+  .folder-h{display:flex;align-items:center}
+  .folder-t{all:unset;cursor:pointer;flex:1;display:flex;align-items:center;gap:8px;padding:10px 0;font:600 15px Inter}
+  .folder-t svg{color:var(--accent);flex:none}
+  .folder-t small{font:500 12px Inter;color:var(--muted);margin-left:2px}
+  .folder-t.static{cursor:default;font:600 13px Inter;color:var(--muted)}
+  .rt-row{display:flex;align-items:center;border-top:1px solid var(--line)}
+  .folder.loose .rt-row:first-child{border-top:0}
+  .rt-row.on .rt-load b{color:var(--accent)}
+  .rt-load{all:unset;cursor:pointer;flex:1;padding:10px 0 10px 4px;min-width:0}
+  .folder:not(.loose) .rt-load{padding-left:30px}
+  .rt-load b{display:block;font:600 14.5px Inter;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rt-load small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+  .rt-edit{all:unset;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:var(--muted);border-radius:10px;flex:none}
+  .rt-edit:active,.rt-load:active,.folder-t:active{background:var(--card2)}
   .pp-wrap{background:none;border:none;display:flex;align-items:center;justify-content:center}
   .pp{width:16px;height:16px;border-radius:50%;background:#ff6b35;border:3px solid #0e1013;box-shadow:0 0 0 1.5px #ff6b35}
   .pp.start{background:#3ddc84;box-shadow:0 0 0 1.5px #3ddc84}
@@ -258,7 +296,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v13<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v14<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -269,7 +307,7 @@
 <script>
 (() => {
   const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory';
-  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190, period: 'week', periodOffset: 0, listScroll: null, cameFromList: false, shownRun: null, cityBusy: false };
+  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190, period: 'week', periodOffset: 0, listScroll: null, cameFromList: false, shownRun: null, cityBusy: false, planForm: null, closedFolders: new Set(), lastFolder: '' };
   const $ = id => document.getElementById(id);
 
   /* ---------- storage ---------- */
@@ -1178,6 +1216,29 @@
   let plan = { pts: [], loop: false, view: null };
   try { plan = Object.assign(plan, JSON.parse(localStorage.getItem(PLAN_KEY) || '{}')); } catch {}
   const savePlan = () => { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch {} };
+  const ROUTES_KEY = 'runlog.routes';
+  let library = { routes: [], folders: [] };
+  try { library = Object.assign(library, JSON.parse(localStorage.getItem(ROUTES_KEY) || '{}')); } catch {}
+  const saveLibrary = () => { try { localStorage.setItem(ROUTES_KEY, JSON.stringify(library)); return true; } catch { return false; } };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const routeById = id => library.routes.find(r => r.id === id);
+  const folderById = id => library.folders.find(f => f.id === id);
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+  function folderOptions(selected) {
+    return `<option value="">No folder</option>` +
+      [...library.folders].sort(byName).map(f => `<option value="${f.id}"${f.id === selected ? ' selected' : ''}>${esc(f.name)}</option>`).join('') +
+      `<option value="__new">+ New folder…</option>`;
+  }
+  // Returns the folder id to use, creating a folder if "New folder" was chosen.
+  function resolveFolder(sel, newName) {
+    if (sel !== '__new') return sel || null;
+    const name = (newName || '').trim();
+    if (!name) return null;
+    const existing = library.folders.find(f => f.name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing.id;
+    const f = { id: newId(), name }; library.folders.push(f); return f.id;
+  }
+
   function planPath() {
     const p = plan.pts.slice();
     if (plan.loop && p.length > 2) p.push(p[0]);
@@ -1196,6 +1257,8 @@
     $('planCount').textContent = plan.pts.length;
     $('planUndo').disabled = !plan.pts.length; $('planClear').disabled = !plan.pts.length;
     $('planLoop').setAttribute('aria-pressed', plan.loop);
+    if ($('planSave')) $('planSave').disabled = plan.pts.length < 2;
+    if ($('planSaveNew')) $('planSaveNew').disabled = plan.pts.length < 2;
   }
   function renderPlan() {
     $('footer').hidden = true;
@@ -1212,8 +1275,12 @@
         <button type="button" id="planLoop" aria-pressed="false">Loop to start</button>
         <button type="button" id="planClear">Clear</button>
       </div>
+      ${planSaveBarHtml()}
+      ${planFormHtml()}
       <div class="note">Tap the map to add a point. Drag a point to move it, or drag a small dot between two points to add a bend. Tap a point to remove it. Distances follow straight lines between your points, so add points around corners for the most accurate total.</div>
+      ${savedRoutesHtml()}
     </div>`;
+    wirePlanLibrary();
     $('planUndo').onclick = () => { plan.pts.pop(); savePlan(); drawPlan(); };
     $('planClear').onclick = () => {
       const b = $('planClear');
@@ -1257,6 +1324,140 @@
     requestAnimationFrame(() => map.invalidateSize());
     drawPlan();
   }
+  /* ---------- saving, naming and folders ---------- */
+  function planSaveBarHtml() {
+    const cur = plan.routeId && routeById(plan.routeId);
+    if (!cur) { plan.routeId = null; }
+    return `<div class="savebar">
+      ${cur ? `<div class="editing"><span>Editing <b>${esc(cur.name)}</b>${cur.folder && folderById(cur.folder) ? ` in ${esc(folderById(cur.folder).name)}` : ''}</span><button type="button" class="linkbtn" id="planNew">Start a new route</button></div>` : ''}
+      <div class="savebtns">
+        <button type="button" class="primary" id="planSave"${plan.pts.length < 2 ? ' disabled' : ''}>${cur ? 'Save changes' : 'Save route'}</button>
+        ${cur ? `<button type="button" id="planSaveNew"${plan.pts.length < 2 ? ' disabled' : ''}>Save as new</button>` : ''}
+      </div>
+    </div>`;
+  }
+  function planFormHtml() {
+    const f = state.planForm;
+    if (!f) return '';
+    if (f.mode === 'folder') {
+      const fo = f.id && folderById(f.id);
+      return `<form class="sheet" id="planForm">
+        <h3>${fo ? 'Edit folder' : 'New folder'}</h3>
+        <label>Folder name<input id="pfName" maxlength="40" required value="${esc(fo ? fo.name : '')}" placeholder="e.g. Weekday loops"></label>
+        <div class="sheet-btns">
+          ${fo ? `<button type="button" class="danger" id="pfDelete">Delete folder</button>` : ''}
+          <button type="button" id="pfCancel">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+        ${fo ? `<div class="note">Deleting a folder keeps its routes; they move to "No folder".</div>` : ''}
+      </form>`;
+    }
+    const r = f.mode === 'edit' ? routeById(f.id) : plan.routeId ? routeById(plan.routeId) : null;
+    const dist = f.mode === 'edit' && r ? r.dist : planDistance();
+    const defName = r ? r.name : `${plan.loop ? 'Loop' : 'Route'} – ${fmtDist(dist)} ${state.unit}`;
+    const title = f.mode === 'edit' ? 'Edit saved route' : f.mode === 'saveNew' ? 'Save as a new route' : r ? 'Save changes' : 'Save this route';
+    return `<form class="sheet" id="planForm">
+      <h3>${title}</h3>
+      <label>Name<input id="pfName" maxlength="60" required value="${esc(f.mode === 'saveNew' ? defName + ' (copy)' : defName)}"></label>
+      <label>Folder<select id="pfFolder">${folderOptions(r ? r.folder : (state.lastFolder || ''))}</select></label>
+      <label id="pfNewWrap" hidden>New folder name<input id="pfNewFolder" maxlength="40" placeholder="e.g. Long runs"></label>
+      <div class="sheet-btns">
+        ${f.mode === 'edit' ? `<button type="button" class="danger" id="pfDelete">Delete route</button>` : ''}
+        <button type="button" id="pfCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>`;
+  }
+  function savedRoutesHtml() {
+    if (!library.routes.length && !library.folders.length)
+      return `<div class="lib"><div class="lib-h"><h2>Saved routes</h2><button type="button" class="linkbtn" id="newFolder">+ New folder</button></div>
+        <div class="note" style="margin:0 2px">Routes you save show up here.</div></div>`;
+    const U = state.unit;
+    const row = r => `<div class="rt-row${r.id === plan.routeId ? ' on' : ''}">
+        <button type="button" class="rt-load" data-load="${r.id}"><b>${esc(r.name)}</b>
+          <small>${fmtDist(r.dist)} ${U}${r.loop ? ' · loop' : ''} · ${r.pts.length} points</small></button>
+        <button type="button" class="rt-edit" data-edit="${r.id}" aria-label="Edit ${esc(r.name)}">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>`;
+    const groups = [...library.folders].sort(byName).map(f => ({ f, list: library.routes.filter(r => r.folder === f.id) }));
+    const loose = library.routes.filter(r => !r.folder || !folderById(r.folder));
+    let html = `<div class="lib"><div class="lib-h"><h2>Saved routes</h2><button type="button" class="linkbtn" id="newFolder">+ New folder</button></div>`;
+    for (const { f, list } of groups) {
+      const open = !state.closedFolders.has(f.id);
+      html += `<div class="folder${open ? ' open' : ''}">
+        <div class="folder-h">
+          <button type="button" class="folder-t" data-toggle="${f.id}" aria-expanded="${open}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span>${esc(f.name)}</span><small>${list.length}</small>
+          </button>
+          <button type="button" class="rt-edit" data-editfolder="${f.id}" aria-label="Edit folder ${esc(f.name)}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        ${open ? (list.length ? [...list].sort(byName).map(row).join('') : `<div class="note" style="margin:0 0 6px 30px">Empty folder</div>`) : ''}
+      </div>`;
+    }
+    if (loose.length) html += `<div class="folder open loose">${library.folders.length ? `<div class="folder-h"><span class="folder-t static">No folder <small>${loose.length}</small></span></div>` : ''}${[...loose].sort(byName).map(row).join('')}</div>`;
+    return html + `</div>`;
+  }
+  function closeForm() { state.planForm = null; render(); }
+  function wirePlanLibrary() {
+    const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+    on('planSave', () => { state.planForm = { mode: 'save' }; render(); $('pfName') && $('pfName').focus(); });
+    on('planSaveNew', () => { state.planForm = { mode: 'saveNew' }; render(); });
+    on('planNew', () => { plan = { pts: [], loop: false, view: plan.view, routeId: null }; savePlan(); state.planForm = null; render(); });
+    on('newFolder', () => { state.planForm = { mode: 'folder' }; render(); $('pfName') && $('pfName').focus(); });
+    on('pfCancel', closeForm);
+    const sel = $('pfFolder');
+    if (sel) sel.onchange = () => { $('pfNewWrap').hidden = sel.value !== '__new'; if (sel.value === '__new') $('pfNewFolder').focus(); };
+    const del = $('pfDelete');
+    if (del) del.onclick = () => {
+      if (!del.dataset.sure) { del.dataset.sure = '1'; del.textContent = 'Tap again to delete'; return; }
+      const f = state.planForm;
+      if (f.mode === 'folder') {
+        library.routes.forEach(r => { if (r.folder === f.id) r.folder = null; });
+        library.folders = library.folders.filter(x => x.id !== f.id);
+      } else {
+        library.routes = library.routes.filter(x => x.id !== f.id);
+        if (plan.routeId === f.id) plan.routeId = null;
+      }
+      saveLibrary(); savePlan(); closeForm();
+    };
+    const form = $('planForm');
+    if (form) form.onsubmit = e => {
+      e.preventDefault();
+      const f = state.planForm, name = $('pfName').value.trim();
+      if (!name) { $('pfName').focus(); return; }
+      if (f.mode === 'folder') {
+        const fo = f.id && folderById(f.id);
+        if (fo) fo.name = name; else library.folders.push({ id: newId(), name });
+      } else {
+        const folder = resolveFolder($('pfFolder').value, $('pfNewFolder').value);
+        state.lastFolder = folder || '';
+        if (f.mode === 'edit') {
+          const r = routeById(f.id); if (r) { r.name = name; r.folder = folder; }
+        } else {
+          const data = { name, folder, pts: plan.pts.map(p => [...p]), loop: plan.loop, dist: Math.round(planDistance()), updated: Date.now() };
+          const cur = f.mode === 'save' && plan.routeId && routeById(plan.routeId);
+          if (cur) Object.assign(cur, data);
+          else { const r = { id: newId(), created: Date.now(), ...data }; library.routes.push(r); plan.routeId = r.id; }
+          savePlan();
+        }
+      }
+      if (!saveLibrary()) showMsg('Your phone’s storage for this app is full, so the route could not be saved.', true);
+      closeForm();
+    };
+    document.querySelectorAll('[data-load]').forEach(b => b.onclick = () => {
+      const r = routeById(b.dataset.load); if (!r) return;
+      plan = { pts: r.pts.map(p => [...p]), loop: !!r.loop, view: null, routeId: r.id };
+      savePlan(); state.planForm = null; render(); window.scrollTo(0, 0);
+    });
+    document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { state.planForm = { mode: 'edit', id: b.dataset.edit }; render(); $('planForm').scrollIntoView({ block: 'center' }); });
+    document.querySelectorAll('[data-editfolder]').forEach(b => b.onclick = () => { state.planForm = { mode: 'folder', id: b.dataset.editfolder }; render(); $('planForm').scrollIntoView({ block: 'center' }); });
+    document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
+      const id = b.dataset.toggle; state.closedFolders.has(id) ? state.closedFolders.delete(id) : state.closedFolders.add(id); render();
+    });
+  }
+
   const planIcon = cls => L.divIcon({ className: 'pp-wrap', html: `<div class="${cls}"></div>`, iconSize: [34, 34], iconAnchor: [17, 17] });
   function drawPlan() {
     updatePlanStats();
@@ -1318,7 +1519,7 @@
     destroyMaps();
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
-    if (view === 'plan') return renderPlan();
+    if (view === 'plan') { const y = window.scrollY; renderPlan(); window.scrollTo(0, y); return; }
     if (view === 'records') {
       renderRecords();
       if (state.listScroll != null) { window.scrollTo(0, state.listScroll); state.listScroll = null; }
