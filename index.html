@@ -212,6 +212,7 @@
   .vidbtn{all:unset;cursor:pointer;margin-left:auto;font:600 11.5px Inter;color:#ff9a9d;border:1px solid #5a2a2d;padding:3px 8px;border-radius:7px;white-space:nowrap}
   .vidbtn.on{color:var(--text);border-color:var(--line)}
   .vidwrap{position:relative;width:100%;aspect-ratio:16/9;margin:6px 0 8px;border-radius:10px;overflow:hidden;background:#000}
+  .ytopen{font-size:12px;margin:-2px 0 8px;align-self:flex-start}
   .vidwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .ex-vid{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 2px}
   .wo-form .ex-row .ex-url{flex:1;min-width:160px;font-size:14px;padding:7px 8px}
@@ -427,7 +428,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v23<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v24<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2082,7 +2083,7 @@
   function exItem(ex, key) {
     const id = ytId(ex.video), open = state.vidOpen === key;
     return `<div class="exi"><div class="exl">${exLine(ex)}${id ? `<button type="button" class="vidbtn${open ? ' on' : ''}" data-vid="${esc(key)}">${open ? '✕ Close' : '▶ How to'}</button>` : ''}</div>
-      ${id && open ? `<div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${esc(ex.name)} – how to" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>` : ''}</div>`;
+      ${id && open ? `<div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${esc(ex.name)} – how to" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div><a class="linkbtn ytopen" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Video won’t play? Open in YouTube</a>` : ''}</div>`;
   }
   const wireVids = () => document.querySelectorAll('[data-vid]').forEach(b => b.onclick = e => { e.stopPropagation(); state.vidOpen = state.vidOpen === b.dataset.vid ? null : b.dataset.vid; render(); });
   const presetBody = (p, keyBase) => `${p.rest ? `<div class="restline">Rest ${fmtRest(p.rest)} between sets</div>` : ''}${p.ex.map((ex, i) => exItem(ex, keyBase + ':' + i)).join('')}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}`;
