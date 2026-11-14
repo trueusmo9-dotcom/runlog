@@ -534,6 +534,9 @@
       const r = state.runs.find(x => x.id === el.dataset.map);
       if (!r || !r.route || r.route.length < 2) return;
       el.innerHTML = '';
+      // Give the map a real pixel height before Leaflet measures it (iPhone Safari can report 0 here)
+      el.style.height = Math.round((el.clientWidth || el.parentElement.clientWidth || 320) * 0.75) + 'px';
+      el.style.aspectRatio = 'auto';
       const map = L.map(el, {
         zoomControl: true, attributionControl: true, scrollWheelZoom: false,
         dragging: true, touchZoom: true, tap: false
@@ -547,7 +550,31 @@
       const line = L.polyline(r.route, { color: '#ff6b35', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(map);
       L.circleMarker(r.route[r.route.length - 1], { radius: 6, color: '#ffb38f', weight: 3, fillColor: '#0e1013', fillOpacity: 1 }).addTo(map);
       L.circleMarker(r.route[0], { radius: 6, color: '#0e1013', weight: 2, fillColor: '#3ddc84', fillOpacity: 1 }).addTo(map);
-      map.fitBounds(line.getBounds(), { padding: [24, 24] });
+      const bounds = line.getBounds();
+      map.setView(bounds.getCenter(), 15);
+      const fit = () => {
+        if (!map.getContainer().isConnected) return;
+        map.invalidateSize(false);
+        if (map.getSize().y > 0) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 17, animate: false });
+      };
+      const Recenter = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd() {
+          const wrap = L.DomUtil.create('div', 'leaflet-bar');
+          const b = L.DomUtil.create('a', '', wrap);
+          b.href = '#'; b.title = 'Re-centre on route'; b.setAttribute('role', 'button');
+          b.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>';
+          b.style.display = 'flex'; b.style.alignItems = 'center'; b.style.justifyContent = 'center';
+          L.DomEvent.on(b, 'click', e => { L.DomEvent.stop(e); fit(); });
+          return wrap;
+        }
+      });
+      map.addControl(new Recenter());
+      map.once('load', fit);
+      fit();
+      requestAnimationFrame(fit);
+      setTimeout(fit, 250);
+      setTimeout(fit, 800);
       liveMaps.push(map);
     });
   }
