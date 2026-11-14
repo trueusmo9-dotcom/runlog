@@ -184,6 +184,15 @@
   .hmeta b{color:var(--text);font-weight:600}
   .hsub{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
   .hsub span{display:block;font:400 11.5px Inter;text-transform:none;letter-spacing:0;margin-top:2px}
+  .morelink{display:block;margin-top:12px}
+  .sleep-top{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;gap:6px}
+  .sleep-top b{display:block;font:700 24px/1.1 var(--num)}
+  .sleep-top small{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .stage-rows{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px}
+  .srow2{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:6px;font-size:13px}
+  .srow2 i{width:10px;height:10px;border-radius:2px}
+  .srow2 b{font:600 15px var(--num)}
+  .srow2 small{color:var(--muted);font-size:11px;min-width:28px;text-align:right}
   .stages{display:flex;gap:2px;height:10px;margin-top:12px;border-radius:5px;overflow:hidden}
   .stages i{display:block;height:100%}
   .slegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:6px}
@@ -334,7 +343,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v19<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v20<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -568,8 +577,9 @@
       if (!(t1 > t0)) return;
       const stage = /InBed/.test(v) ? 'inBed' : /Awake/.test(v) ? 'awake' : /Deep/.test(v) ? 'deep' : /REM/.test(v) ? 'rem' : /Core/.test(v) ? 'core' : 'asleep';
       const night = H.sleep[ed.slice(0, 10)] || (H.sleep[ed.slice(0, 10)] = {});
-      const s = night[src] || (night[src] = { inBed: 0, awake: 0, deep: 0, rem: 0, core: 0, asleep: 0, start: Infinity, end: 0 });
+      const s = night[src] || (night[src] = { inBed: 0, awake: 0, deep: 0, rem: 0, core: 0, asleep: 0, start: Infinity, end: 0, segs: [] });
       s[stage] += (t1 - t0) / 1000; s.start = Math.min(s.start, t0); s.end = Math.max(s.end, t1);
+      s.segs.push([t0, t1, stage]);
       return;
     }
     let v = parseFloat(getAttr(tag, 'value'));
@@ -600,9 +610,13 @@
     }
   }
   // Like Apple Health, don't add up two devices counting the same steps: take the larger daily total.
-  function finalizeHealth(H) {
+  function finalizeHealth(H, hrx) {
     if (!H) return 0;
     const out = state.health || { days: {}, sleep: {} };
+    if (hrx && hrx.hrT) { // sorted copy of all heart-rate readings for overnight lookups
+      const idx = hrx.hrT.map((_, i) => i).sort((p, q) => hrx.hrT[p] - hrx.hrT[q]);
+      hrx = { T: idx.map(i => hrx.hrT[i]), V: idx.map(i => hrx.hrV[i]) };
+    } else hrx = null;
     const touched = new Set();
     // In each 5-minute slot, use the device that counted the most. When both carried, nothing is doubled;
     // when only one was with you (e.g. a run without your phone), its steps are added to the day.
@@ -622,8 +636,23 @@
       let best = null, bestV = -1;
       for (const s of Object.values(bySrc)) { const a = s.deep + s.rem + s.core + s.asleep, v = a > 0 ? a + 1e9 : s.inBed; if (v > bestV) { bestV = v; best = s; } }
       const r = x => Math.round(x);
-      out.sleep[night] = { asleep: r(best.deep + best.rem + best.core + best.asleep), inBed: r(best.inBed), deep: r(best.deep), rem: r(best.rem), core: r(best.core),
-        awake: r(best.awake), start: isFinite(best.start) ? best.start : null, end: best.end || null };
+      const hasStages = best.deep + best.rem + best.core + best.asleep + best.awake > 0;
+      const segs = best.segs.filter(sg => !hasStages || sg[2] !== 'inBed').sort((a, b) => a[0] - b[0]);
+      const st0 = segs.length ? segs[0][0] : best.start, st1 = segs.length ? Math.max(...segs.map(sg => sg[1])) : best.end;
+      const nightRec = { asleep: r(best.deep + best.rem + best.core + best.asleep), inBed: r(best.inBed), deep: r(best.deep), rem: r(best.rem), core: r(best.core),
+        awake: r(best.awake), start: isFinite(st0) ? st0 : null, end: st1 || null,
+        segs: isFinite(st0) ? segs.map(([a, b, k]) => [Math.round((a - st0) / 6000) / 10, Math.round((b - st0) / 6000) / 10, k]) : [] };
+      // heart rate between falling asleep and waking (any device)
+      if (hrx && isFinite(st0) && st1 > st0) {
+        const pts = [];
+        for (let i = lowerBound(hrx.T, st0); i < hrx.T.length && hrx.T[i] <= st1; i++) pts.push([(hrx.T[i] - st0) / 60000, hrx.V[i]]);
+        if (pts.length >= 5) {
+          nightRec.hr = thin(pts, 180).map(([m, v]) => [Math.round(m * 10) / 10, Math.round(v)]);
+          nightRec.hrMin = Math.round(Math.min(...pts.map(q => q[1])));
+          nightRec.hrAvg = Math.round(pts.reduce((a, q) => a + q[1], 0) / pts.length);
+        }
+      }
+      out.sleep[night] = nightRec;
       touched.add(night);
     }
     out.updated = Date.now();
@@ -1041,7 +1070,7 @@
       const scan = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
       const { others, extra } = scan, runs = combineRuns(scan.runs);
       enrichRuns(runs, extra);
-      const healthDays = finalizeHealth(extra.health);
+      const healthDays = finalizeHealth(extra.health, extra);
       const withRoutes = runs.filter(r => r.routePath);
       let i = 0;
       for (const r of withRoutes) {
@@ -1090,7 +1119,7 @@
         const scan = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
         const { others, extra } = scan, runs = combineRuns(scan.runs);
         enrichRuns(runs, extra);
-        const healthDays = finalizeHealth(extra.health);
+        const healthDays = finalizeHealth(extra.health, extra);
         let added = 0; for (const r of runs) if (addRun(r)) added++;
         res = { added, found: runs.length, others, routes: 0, healthDays };
       } else if (/\.(gpx|tcx|fit)(\.gz)?$/.test(n)) {
@@ -1709,7 +1738,7 @@
     swim: '<path d="M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l5-5 3 2 3 3"/>'
   };
   const SPORTS = {
-    health: { name: 'Health', tabs: [['health', 'Overview', '#health']] },
+    health: { name: 'Health', tabs: [['health', 'Overview', '#health'], ['sleep', 'Sleep', '#health-sleep']] },
     run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
     bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
     swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] }
@@ -1875,6 +1904,7 @@
         ${starts.length ? `<div class="hmeta"><span>Avg bedtime <b>${fmtClock(720 + mean(starts))}</b></span><span>Avg wake <b>${fmtClock(720 + mean(ends))}</b></span><span><b>${nights.length}</b> nights</span></div>` : ''}
         ${stTot > 0 ? `<div class="stages">${STG.map(([k, , c]) => st[k] ? `<i style="width:${(st[k] / stTot * 100).toFixed(2)}%;background:${c}"></i>` : '').join('')}</div>
           <div class="slegend">${STG.map(([k, n, c]) => `<span><i style="background:${c}"></i>${n} ${Math.round(st[k] / stTot * 100)}%</span>`).join('')}</div>` : ''}
+        <button type="button" class="linkbtn morelink" id="toSleep">See each night: stages &amp; heart rate ›</button>
       </div>`;
       cards++;
     }
@@ -1918,7 +1948,98 @@
     if (!cards) html += `<div class="note" style="margin:6px 2px">No health data in this ${state.period}.</div>`;
     html += `<div class="note" style="margin:10px 2px 0">From Apple Health: every app and device that saves there, including your iPhone. Steps, distance, calories and flights are matched by time: when your phone and watch both count the same 5 minutes, the higher one is used; when only one was with you (like a run without your phone), its count is added. Import a new export.zip to update.</div>`;
     $('content').innerHTML = html;
+    if ($('toSleep')) $('toSleep').onclick = () => goHash('#health-sleep');
     wireWeek();
+    wireCharts();
+  }
+
+  /* ---------- Sleep: one night at a time ---------- */
+  const STAGES = [['awake', 'Awake', '#d9d0ff'], ['rem', 'REM', '#a690ff'], ['core', 'Core', '#7d63e6'], ['deep', 'Deep', '#5e45c4']];
+  function hypnogram(key, n) {
+    const W = 340, H = 156, L = 46, R = 8, T = 6, B = 22, lanes = STAGES.length, lh = (H - T - B) / lanes;
+    const total = Math.max(1, ...n.segs.map(s => s[1]));
+    const sx = m => L + m / total * (W - L - R);
+    const laneOf = k => k === 'asleep' ? 2 : k === 'inBed' ? 2 : STAGES.findIndex(s => s[0] === k);
+    const colorOf = k => k === 'asleep' ? '#8b72f0' : k === 'inBed' ? '#4a4f5a' : STAGES.find(s => s[0] === k)[2];
+    const labels = STAGES.map(([, name], i) => `<text x="${L - 6}" y="${(T + lh * i + lh / 2 + 3.5).toFixed(1)}" text-anchor="end" class="ax">${name}</text>
+      <line x1="${L}" x2="${W - R}" y1="${(T + lh * (i + 1)).toFixed(1)}" y2="${(T + lh * (i + 1)).toFixed(1)}" class="gl"/>`).join('');
+    // thin connectors show the drop from one stage to the next, like a sleep-lab hypnogram
+    let links = '';
+    for (let i = 1; i < n.segs.length; i++) {
+      const a = n.segs[i - 1], b = n.segs[i]; if (b[0] - a[1] > 2) continue;
+      const ya = T + lh * laneOf(a[2]) + lh / 2, yb = T + lh * laneOf(b[2]) + lh / 2;
+      links += `<line x1="${sx(b[0]).toFixed(1)}" x2="${sx(b[0]).toFixed(1)}" y1="${ya.toFixed(1)}" y2="${yb.toFixed(1)}" stroke="#4a4f5a" stroke-width="1"/>`;
+    }
+    const blocks = n.segs.map(([a, b, k]) => {
+      const x = sx(a), w = Math.max(1.5, sx(b) - sx(a)), y = T + lh * laneOf(k) + 3;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${(lh - 6).toFixed(1)}" rx="2" fill="${colorOf(k)}"/>`;
+    }).join('');
+    const ticks = [], step = total > 600 ? 120 : 60, first = new Date(n.start);
+    for (let m = (60 - first.getMinutes()) % 60; m <= total; m += step) ticks.push(m);
+    const xl = ticks.map(m => `<text x="${sx(m).toFixed(1)}" y="${H - 7}" text-anchor="middle" class="ax">${esc(new Date(n.start + m * 60000).toLocaleTimeString(undefined, { hour: 'numeric' }))}</text>`).join('');
+    const mids = n.segs.map(([a, b, k]) => [(a + b) / 2, laneOf(k), a, b, k]);
+    CHARTS[key] = { data: mids.map(m => [m[0], m[1]]), sx, sy: lane => T + lh * lane + lh / 2, W, H, T, B,
+      tip: p => { const m = mids.find(q => q[0] === p[0] && q[1] === p[1]); const nm = m[4] === 'asleep' ? 'Asleep' : m[4] === 'inBed' ? 'In bed' : STAGES.find(s => s[0] === m[4])[1];
+        const clk = mm => new Date(n.start + mm * 60000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        return `<b>${nm} · ${fmtHM((m[3] - m[2]) * 60)}</b><span>${clk(m[2])} – ${clk(m[3])}</span>`; } };
+    return `<div class="chart" data-chart="${key}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sleep stages through the night">
+      ${labels}${links}${blocks}${xl}
+      <g class="cur" style="display:none"><line y1="${T}" y2="${H - B}" class="cl"/><circle r="4" fill="#eef0f3" stroke="var(--card)" stroke-width="2"/></g>
+      <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div></div>`;
+  }
+  function renderSleep() {
+    $('footer').hidden = true;
+    const S = (state.health && state.health.sleep) || {};
+    const nights = Object.keys(S).filter(k => S[k].start && (S[k].asleep + S[k].inBed) > 1800).sort();
+    if (!nights.length) {
+      $('content').innerHTML = `<div class="empty soon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <div class="big">No nights yet</div>Import a Health export that includes sleep. For sleep stages and overnight heart rate, wear your watch to bed and let Nothing X save sleep to Apple Health.</div>`;
+      return;
+    }
+    if (!state.sleepNight || !S[state.sleepNight] || !nights.includes(state.sleepNight)) state.sleepNight = nights[nights.length - 1];
+    const i = nights.indexOf(state.sleepNight), n = S[state.sleepNight];
+    const wake = new Date(n.end), bed = new Date(n.start);
+    const clk = d => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const hasStages = n.deep + n.rem + n.core > 0;
+    const asleep = n.asleep || n.inBed, span = (n.end - n.start) / 1000;
+    let html = `<div class="week slim">
+        <button class="wnav" type="button" id="nPrev" aria-label="Previous night"${i === 0 ? ' disabled' : ''}>${arrow('M15 6l-6 6 6 6')}</button>
+        <div class="wmid"><div class="wlabel">${i === nights.length - 1 ? 'Latest night' : 'Night of'}</div>
+          <div class="wrange">${esc(new Date(n.start).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))} → ${esc(wake.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}</div></div>
+        <button class="wnav" type="button" id="nNext" aria-label="Next night"${i === nights.length - 1 ? ' disabled' : ''}>${arrow('M9 6l6 6-6 6')}</button>
+      </div>
+      <div class="hcard"><div class="sleep-top">
+        <div><b>${fmtHM(asleep)}</b><small>${n.asleep ? 'asleep' : 'in bed'}</small></div>
+        <div><b>${clk(bed)}</b><small>fell asleep</small></div>
+        <div><b>${clk(wake)}</b><small>woke up</small></div>
+      </div>${n.asleep && span > n.asleep + 300 ? `<div class="note" style="text-align:center">${fmtHM(span)} from first to last sleep · ${Math.round(n.asleep / span * 100)}% asleep</div>` : ''}</div>`;
+
+    html += `<div class="hcard"><div class="hhead"><span>Sleep stages</span></div>`;
+    if (n.segs && n.segs.length) {
+      html += hypnogram('sl-' + state.sleepNight, n);
+      if (hasStages) {
+        const tot = n.awake + n.rem + n.core + n.deep;
+        html += `<div class="stage-rows">${STAGES.map(([k, name, c]) => `<div class="srow2"><i style="background:${c}"></i><span>${name}</span><b>${fmtHM(n[k])}</b><small>${Math.round(n[k] / tot * 100)}%</small></div>`).join('')}</div>
+          <div class="note">Tap or drag across the chart to see each stage's exact times.</div>`;
+      } else html += `<div class="note">This night only has ${n.asleep ? '"asleep"' : '"in bed"'} times, without Deep / REM / Core stages. Stages come from a watch worn overnight that saves them to Apple Health.</div>`;
+    } else html += `<div class="note">Stage details weren't saved for this night. Import your Health export again to add them.</div>`;
+    html += `</div>`;
+
+    html += `<div class="hcard"><div class="hhead"><span>Heart rate overnight</span>${n.hr ? `<div><b>${n.hrMin}<small class="u">bpm</small></b><small>lowest · avg ${n.hrAvg}</small></div>` : ''}</div>`;
+    if (n.hr && n.hr.length > 3) {
+      html += lineChart('slhr-' + state.sleepNight, n.hr, {
+        label: 'Heart rate during sleep', color: '#ff5a5f', area: true,
+        yTicks: (lo, hi) => niceTicks(Math.max(30, lo - 4), hi + 4, 3), yFmt: v => Math.round(v),
+        xTicks: (a, b) => { const t = [], f = new Date(n.start), st = (b - a) > 600 ? 120 : 60; for (let m = (60 - f.getMinutes()) % 60; m <= b; m += st) t.push(m); return t; },
+        xFmt: m => esc(new Date(n.start + m * 60000).toLocaleTimeString(undefined, { hour: 'numeric' })),
+        tip: p => `<b>${p[1]} bpm</b><span>${esc(new Date(n.start + p[0] * 60000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span>`
+      }) + `<div class="note">Heart rate usually drops during Deep sleep and rises in REM and when you wake.</div>`;
+    } else html += `<div class="note">No heart-rate readings during this night. Wear your watch to bed with heart-rate tracking on, then import again.</div>`;
+    html += `</div>`;
+    $('content').innerHTML = html;
+    $('nPrev').onclick = () => { state.sleepNight = nights[i - 1]; render(); };
+    $('nNext').onclick = () => { state.sleepNight = nights[i + 1]; render(); };
     wireCharts();
   }
 
@@ -1933,7 +2054,7 @@
     document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim');
     renderNavs(sport, view);
     destroyMaps();
-    if (sport === 'health') { state.shownRun = null; return renderHealth(); }
+    if (sport === 'health') { state.shownRun = null; return view === 'sleep' ? renderSleep() : renderHealth(); }
     if (sport !== 'run') { state.shownRun = null; return renderOther(sport, view); }
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
