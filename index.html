@@ -94,6 +94,23 @@
   .empty{margin-top:28px;text-align:center;color:var(--muted);padding:28px 16px;border:1px dashed var(--line);border-radius:14px}
   .empty .big{font:600 22px var(--num);color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
   .ghost{all:unset;cursor:pointer;margin-top:14px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:13.5px}
+  details.inv{margin:16px 0 4px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+  details.inv summary{cursor:pointer;list-style:none;padding:13px 14px;display:flex;flex-direction:column;gap:2px;position:relative}
+  details.inv summary::-webkit-details-marker{display:none}
+  details.inv summary::after{content:"+";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px}
+  details.inv[open] summary::after{content:"–"}
+  .inv-t{font-weight:600;font-size:14.5px}
+  .inv-s{font-size:12.5px;color:var(--muted)}
+  .inv-b{padding:0 14px 14px}
+  .inv-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+  .inv-bar .seg button[disabled]{opacity:.4;cursor:default}
+  .ghost.sm{margin:0;padding:6px 10px;font-size:12.5px}
+  .inv-g{font:600 11.5px Inter;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 2px}
+  .inv-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+  .inv-n{font-size:14px}
+  .inv-d{font-size:11.5px;color:var(--muted)}
+  .inv-c{font:600 18px var(--num);white-space:nowrap;text-align:right}
+  .inv-c small{display:block;font:500 10.5px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   footer{margin-top:28px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
   footer button{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline}
   .confirm{display:none;gap:8px;align-items:center}
@@ -140,7 +157,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v7</span>
+    <span>Saved on this device only · v8</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -150,8 +167,8 @@
 
 <script>
 (() => {
-  const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit';
-  const state = { runs: [], unit: 'km', open: new Set() };
+  const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory';
+  const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false };
   const $ = id => document.getElementById(id);
 
   /* ---------- storage ---------- */
@@ -163,6 +180,7 @@
     }
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
+    try { state.inventory = JSON.parse(localStorage.getItem(INV_KEY) || 'null'); } catch {}
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state.runs)); return true; }
@@ -335,23 +353,48 @@
     };
   }
 
+  /* ---------- export scan: count every kind of data and which app wrote it ---------- */
+  function getAttr(tag, name) {
+    const k = ' ' + name + '="', i = tag.indexOf(k);
+    if (i < 0) return '';
+    const st = i + k.length;
+    return tag.slice(st, tag.indexOf('"', st));
+  }
+  function bump(map, key, base, d) {
+    const o = map[key] || (map[key] = { ...base, n: 0, first: d, last: d });
+    o.n++;
+    if (d && (!o.first || d < o.first)) o.first = d;
+    if (d && (!o.last || d > o.last)) o.last = d;
+  }
+
   async function scanHealthXml(byteStream, totalBytes, onProgress) {
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
-    const runs = [];
+    const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
+    const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
       if (value) { buf += value; seen += value.length; }
       let pos = 0;
       for (;;) {
-        const s = buf.indexOf('<Workout ', pos);
-        if (s < 0) { pos = Math.max(pos, buf.length - 12); break; }
-        const gt = buf.indexOf('>', s);
+        re.lastIndex = pos;
+        const m = re.exec(buf);
+        if (!m) { pos = Math.max(pos, buf.length - 20); break; }
+        const s = m.index, gt = buf.indexOf('>', s);
         if (gt < 0) { pos = s; break; }
+        if (m[1] === 'Record') {
+          const tag = buf.slice(s, gt + 1), type = getAttr(tag, 'type');
+          bump(inv.records, type + '|' + getAttr(tag, 'sourceName'), { type, src: getAttr(tag, 'sourceName'), unit: getAttr(tag, 'unit') }, getAttr(tag, 'startDate').slice(0, 10));
+          pos = gt + 1; continue;
+        }
+        if (m[1] === 'ActivitySummary') { inv.activitySummaries++; pos = gt + 1; continue; }
         let end;
         if (buf[gt - 1] === '/') end = gt + 1;
         else { const c = buf.indexOf('</Workout>', gt); if (c < 0) { pos = s; break; } end = c + 10; }
-        const w = parseWorkout(buf.slice(s, end));
+        const str = buf.slice(s, end), head = buf.slice(s, gt + 1), wt = getAttr(head, 'workoutActivityType');
+        bump(inv.workouts, wt + '|' + getAttr(head, 'sourceName'), { type: wt, src: getAttr(head, 'sourceName') }, getAttr(head, 'startDate').slice(0, 10));
+        if (str.includes('<FileReference')) inv.routes++;
+        const w = parseWorkout(str);
         if (w) runs.push(w); else others++;
         pos = end;
       }
@@ -360,6 +403,13 @@
       if (onProgress && totalBytes && now - lastTick > 120) { lastTick = now; onProgress(Math.min(.99, seen / totalBytes)); }
       if (done) break;
     }
+    state.inventory = {
+      scanned: Date.now(),
+      records: Object.values(inv.records).map(o => ({ ...o, src: unesc(o.src) })),
+      workouts: Object.values(inv.workouts).map(o => ({ ...o, src: unesc(o.src) })),
+      routes: inv.routes, activitySummaries: inv.activitySummaries
+    };
+    try { localStorage.setItem(INV_KEY, JSON.stringify(state.inventory)); } catch {}
     return { runs, others };
   }
 
@@ -489,6 +539,112 @@
     return out;
   }
 
+
+  /* ---------- "What's in your export" panel ---------- */
+  const NAMES = {
+    HeartRate: 'Heart rate', RestingHeartRate: 'Resting heart rate', WalkingHeartRateAverage: 'Walking heart rate average',
+    HeartRateVariabilitySDNN: 'Heart rate variability (HRV)', HeartRateRecoveryOneMinute: 'Heart rate recovery',
+    OxygenSaturation: 'Blood oxygen (SpO₂)', RespiratoryRate: 'Breathing rate', VO2Max: 'VO₂ max', BodyTemperature: 'Body temperature',
+    AppleSleepingWristTemperature: 'Sleeping wrist temperature', BloodPressureSystolic: 'Blood pressure (systolic)', BloodPressureDiastolic: 'Blood pressure (diastolic)',
+    StepCount: 'Steps', DistanceWalkingRunning: 'Walking + running distance', DistanceCycling: 'Cycling distance',
+    ActiveEnergyBurned: 'Active calories', BasalEnergyBurned: 'Resting calories', FlightsClimbed: 'Flights climbed',
+    AppleExerciseTime: 'Exercise minutes', AppleStandTime: 'Stand minutes', AppleStandHour: 'Stand hours', PhysicalEffort: 'Physical effort',
+    RunningSpeed: 'Running speed', RunningPower: 'Running power', RunningStrideLength: 'Running stride length',
+    RunningVerticalOscillation: 'Vertical oscillation', RunningGroundContactTime: 'Ground contact time',
+    WalkingSpeed: 'Walking speed', WalkingStepLength: 'Walking step length', WalkingAsymmetryPercentage: 'Walking asymmetry',
+    WalkingDoubleSupportPercentage: 'Double support time', AppleWalkingSteadiness: 'Walking steadiness', StairAscentSpeed: 'Stair speed (up)', StairDescentSpeed: 'Stair speed (down)',
+    SixMinuteWalkTestDistance: 'Six-minute walk', TimeInDaylight: 'Time in daylight',
+    SleepAnalysis: 'Sleep', MindfulSession: 'Mindful / breathing sessions', DietaryWater: 'Water',
+    BodyMass: 'Weight', Height: 'Height', BodyMassIndex: 'BMI', BodyFatPercentage: 'Body fat', LeanBodyMass: 'Lean body mass',
+    EnvironmentalAudioExposure: 'Environmental sound levels', HeadphoneAudioExposure: 'Headphone audio levels', EnvironmentalSoundReduction: 'Sound reduction',
+    HighHeartRateEvent: 'High heart rate alerts', LowHeartRateEvent: 'Low heart rate alerts', IrregularHeartRhythmEvent: 'Irregular rhythm alerts',
+    MenstrualFlow: 'Cycle tracking', AppleStandHourCategory: 'Stand hours', HandwashingEvent: 'Handwashing', ToothbrushingEvent: 'Toothbrushing'
+  };
+  const GROUPS = [
+    ['Heart', /Heart|VO2|Oxygen|Respiratory|BloodPressure|Temperature/],
+    ['Activity', /Step|Distance|Energy|Flights|Exercise|Stand|Effort|Running|Walking|Stair|SixMinute|Daylight/],
+    ['Sleep & wellbeing', /Sleep|Mindful|Water|Menstrual|Audio|Sound|Handwash|Toothbrush/],
+    ['Body', /BodyMass|Height|BodyFat|LeanBody/]
+  ];
+  function niceType(t) {
+    const k = t.replace(/^HK(Quantity|Category|Correlation)TypeIdentifier|^HKDataType/, '');
+    return NAMES[k] || k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^Apple /, '');
+  }
+  const niceWorkout = t => t.replace(/^HKWorkoutActivityType/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+  const isWatch = src => /nothing|cmf/i.test(src || '');
+  function fmtDay(d) {
+    if (!d) return '';
+    const x = new Date(d + 'T12:00:00');
+    return isNaN(x) ? d : x.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function invRows() {
+    const inv = state.inventory, all = state.invAll;
+    const pick = list => list.filter(o => all || isWatch(o.src));
+    const merge = (list, nameFn) => {
+      const m = {};
+      for (const o of pick(list)) {
+        const name = nameFn(o.type), key = all ? name + '|' + o.src : name;
+        const t = m[key] || (m[key] = { name, type: o.type, n: 0, first: o.first, last: o.last, srcs: new Set() });
+        t.n += o.n; t.srcs.add(o.src);
+        if (o.first && (!t.first || o.first < t.first)) t.first = o.first;
+        if (o.last && (!t.last || o.last > t.last)) t.last = o.last;
+      }
+      return Object.values(m).sort((a, b) => b.n - a.n);
+    };
+    const recs = merge(inv.records, niceType), wos = merge(inv.workouts, niceWorkout);
+    const groups = [];
+    if (wos.length) groups.push(['Workouts', wos, 'workouts']);
+    const used = new Set();
+    for (const [g, rx] of GROUPS) {
+      const rows = recs.filter(r => !used.has(r) && rx.test(r.type));
+      rows.forEach(r => used.add(r));
+      if (rows.length) groups.push([g, rows, 'readings']);
+    }
+    const rest = recs.filter(r => !used.has(r));
+    if (rest.length) groups.push(['Other', rest, 'readings']);
+    return { groups, nTypes: recs.length + wos.length };
+  }
+  function inventoryHtml() {
+    const inv = state.inventory;
+    if (!inv) return '';
+    const watchTypes = inv.records.filter(o => isWatch(o.src)).length + inv.workouts.filter(o => isWatch(o.src)).length;
+    if (!watchTypes) state.invAll = true;
+    const { groups, nTypes } = invRows();
+    let body = '';
+    for (const [g, rows, unit] of groups) {
+      body += `<div class="inv-g">${esc(g)}</div>`;
+      for (const r of rows) {
+        body += `<div class="inv-row"><div><div class="inv-n">${esc(r.name)}</div>
+          <div class="inv-d">${esc(fmtDay(r.first))}${r.last && r.last !== r.first ? ' – ' + esc(fmtDay(r.last)) : ''}${state.invAll ? ' · ' + esc([...r.srcs].join(', ')) : ''}</div></div>
+          <div class="inv-c">${r.n.toLocaleString()}<small>${r.n === 1 ? unit.slice(0, -1) : unit}</small></div></div>`;
+      }
+    }
+    if (!body) body = '<div class="inv-d" style="padding:10px 0">Nothing found for this filter.</div>';
+    const sub = state.invAll ? `${nTypes} kinds of data, all apps` : `${nTypes} kinds of data from your watch`;
+    return `<details class="inv"${state.invOpen ? ' open' : ''}>
+      <summary><span class="inv-t">What's in your Health export</span><span class="inv-s">${sub}</span></summary>
+      <div class="inv-b">
+        <div class="inv-bar">
+          <div class="seg" role="group" aria-label="Sources">
+            <button type="button" data-inv="watch" aria-pressed="${!state.invAll}"${watchTypes ? '' : ' disabled'}>Watch only</button>
+            <button type="button" data-inv="all" aria-pressed="${state.invAll}">All apps</button>
+          </div>
+          <button type="button" class="ghost sm" id="copyInv">Copy list</button>
+        </div>
+        ${body}
+        <div class="inv-d" style="margin-top:10px">Scanned ${esc(new Date(inv.scanned).toLocaleString())} · ${inv.routes} workout route${inv.routes === 1 ? '' : 's'} in the export${watchTypes ? '' : ' · No data from Nothing X / CMF was found, so all apps are shown.'}</div>
+      </div></details>`;
+  }
+  function inventoryText() {
+    const { groups } = invRows();
+    const lines = [`Health export scan (${state.invAll ? 'all apps' : 'watch only'})`];
+    for (const [g, rows, unit] of groups) {
+      lines.push('', g + ':');
+      for (const r of rows) lines.push(`- ${r.name}: ${r.n.toLocaleString()} ${r.n === 1 ? unit.slice(0, -1) : unit}, ${fmtDay(r.first)} to ${fmtDay(r.last)}${state.invAll ? ' (' + [...r.srcs].join(', ') + ')' : ''}`);
+    }
+    return lines.join('\n');
+  }
+
   /* ---------- UI ---------- */
   function setStatus(text, p) {
     $('status').hidden = false; $('statusText').textContent = text;
@@ -506,6 +662,7 @@
         Tap <b>Import run data</b> and choose your Health <b>export.zip</b>.<br>
         <button class="ghost" id="sampleBtn" type="button">Preview with sample runs</button></div>`;
       $('sampleBtn').onclick = () => { sampleRuns().forEach(addRun); save(); render(); };
+      if (state.inventory) { $('content').insertAdjacentHTML('afterbegin', inventoryHtml()); wireInventory(); }
       return;
     }
     const U = state.unit;
@@ -518,7 +675,7 @@
       <div class="tile"><div class="k">Distance</div><div class="v">${fmtDist(totDist)}<small>${U}</small></div></div>
       <div class="tile"><div class="k">Time</div><div class="v">${fmtDur(totTime)}</div></div>
       <div class="tile"><div class="k">Avg pace</div><div class="v">${fmtPace(paceSec, paceDist)}<small>/${U}</small></div></div>
-    </div><h2>All runs</h2>`;
+    </div>${inventoryHtml()}<h2>All runs</h2>`;
     for (const r of runs) {
       const open = state.open.has(r.id);
       const badge = r.indoor ? '<span class="badge">Treadmill</span>' : (r.source === 'Sample' ? '<span class="badge">Sample</span>' : '');
@@ -540,7 +697,21 @@
     }
     destroyMaps();
     $('content').innerHTML = html;
+    wireInventory();
     initMaps();
+  }
+
+  function wireInventory() {
+    const d = document.querySelector('details.inv');
+    if (!d) return;
+    d.addEventListener('toggle', () => { state.invOpen = d.open; });
+    d.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { state.invAll = b.dataset.inv === 'all'; state.invOpen = true; render(); });
+    const c = $('copyInv');
+    if (c) c.onclick = async () => {
+      try { await navigator.clipboard.writeText(inventoryText()); c.textContent = 'Copied ✓'; }
+      catch { c.textContent = 'Copy not allowed'; }
+      setTimeout(() => { c.textContent = 'Copy list'; }, 1800);
+    };
   }
 
   /* ---------- real street maps (Leaflet + OpenStreetMap tiles, darkened with CSS) ---------- */
@@ -652,7 +823,7 @@
   $('content').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('top')) { e.preventDefault(); e.target.click(); } });
   $('clearBtn').onclick = () => { $('clearBtn').hidden = true; $('confirm').classList.add('show'); };
   $('noClear').onclick = () => { $('clearBtn').hidden = false; $('confirm').classList.remove('show'); };
-  $('yesClear').onclick = () => { state.runs = []; state.open.clear(); save(); $('noClear').onclick(); showMsg(''); render(); };
+  $('yesClear').onclick = () => { state.runs = []; state.open.clear(); state.inventory = null; try { localStorage.removeItem(INV_KEY); } catch {} save(); $('noClear').onclick(); showMsg(''); render(); };
 
   load(); render();
 })();
