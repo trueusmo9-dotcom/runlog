@@ -22,8 +22,23 @@
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
   .wrap{max-width:640px;margin:0 auto;padding:20px 16px 48px}
-  header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
-  h1{font:700 34px/1 var(--num);letter-spacing:.5px;margin:0;text-transform:uppercase}
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+  .hdr{display:flex;align-items:center;gap:6px}
+  .hbtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 11px;border-radius:10px;background:var(--accent);color:#1a0d06;font:700 13.5px Inter;-webkit-tap-highlight-color:transparent}
+  .hbtn:active{opacity:.85}
+  .hbtn:disabled{opacity:.5}
+  .hbtn.icon{width:34px;padding:0;justify-content:center;background:var(--card);border:1px solid var(--line);color:var(--muted);font:700 15px Inter;box-sizing:border-box}
+  .hbtn.icon[aria-expanded="true"]{color:var(--text);border-color:var(--muted)}
+  header .seg button{padding:6px 9px}
+  .helppanel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:-6px 0 14px;font-size:13.5px;color:#c9ced6}
+  .helppanel[hidden]{display:none}
+  .helppanel b{color:var(--text)}
+  .helppanel ol{margin:6px 0 10px;padding-left:20px}
+  .helppanel li{margin:4px 0}
+  .hp-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:15px}
+  @media (max-width:400px){ h1{font-size:28px} .hdr{gap:5px} .hbtn{padding:0 9px;font-size:13px} header .seg button{padding:6px 7px} }
+  @media (max-width:365px){ h1{font-size:24px} .hbtn{padding:0 7px} .hbtn.icon{width:30px} .hbtn svg{display:none} }
+  h1{font:700 32px/1 var(--num);letter-spacing:.5px;margin:0;text-transform:uppercase;white-space:nowrap}
   h1 span{color:var(--accent)}
   .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
   .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px}
@@ -167,6 +182,8 @@
   .hhead > div > small{font-size:11px;color:var(--muted)}
   .hmeta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:8px}
   .hmeta b{color:var(--text);font-weight:600}
+  .hsub{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 6px}
+  .hsub span{display:block;font:400 11.5px Inter;text-transform:none;letter-spacing:0;margin-top:2px}
   .stages{display:flex;gap:2px;height:10px;margin-top:12px;border-radius:5px;overflow:hidden}
   .stages i{display:block;height:100%}
   .slegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:6px}
@@ -275,40 +292,37 @@
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1>Run<span>Log</span></h1>
-    </div>
-    <div class="seg" role="group" aria-label="Units">
-      <button data-unit="km" aria-pressed="true">km</button>
-      <button data-unit="mi" aria-pressed="false">mi</button>
+    <h1>Run<span>Log</span></h1>
+    <div class="hdr">
+      <button class="hbtn icon" id="helpBtn" type="button" aria-label="How to get your data" aria-expanded="false">?</button>
+      <button class="hbtn" id="importBtn" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Import
+      </button>
+      <div class="seg" role="group" aria-label="Units">
+        <button data-unit="km" aria-pressed="true">km</button>
+        <button data-unit="mi" aria-pressed="false">mi</button>
+      </div>
     </div>
   </header>
+  <input type="file" id="fileInput" multiple>
+
+  <div class="helppanel" id="helpPanel" hidden>
+    <div class="hp-top"><b>Getting your data in</b><button type="button" class="linkbtn" id="helpClose">Close</button></div>
+    <b>From Apple Health</b> (runs, sleep, steps, heart rate and more)
+    <ol>
+      <li>Open the <b>Health</b> app → tap your profile picture → <b>Export All Health Data</b> → <b>Export</b>.</li>
+      <li>Choose <b>Save to Files</b>, then tap <b>Import</b> at the top of this app and pick <b>export.zip</b>.</li>
+    </ol>
+    <b>From Strava</b> (on strava.com in Safari, not the Strava app)
+    <ol>
+      <li><b>One run:</b> open the activity → <b>⋯</b> menu → <b>Export GPX</b> or <b>Export Original</b>. Import the downloaded file.</li>
+      <li><b>Everything:</b> profile picture → <b>Settings</b> → <b>My Account</b> → <b>Download or Delete Your Account</b> → <b>Request Your Archive</b>. Strava emails you a link; download the zip and import it. Only runs are taken from it.</li>
+    </ol>
+    Runs found in both Health and Strava are merged, not doubled. Everything is read on your phone; nothing is uploaded.
+  </div>
 
   <nav class="sports" id="sports" aria-label="Sport"></nav>
   <nav class="tabs" id="tabs" aria-label="Sections"></nav>
-
-  <button class="import" id="importBtn" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
-    Import data
-  </button>
-  <input type="file" id="fileInput" multiple>
-
-  <details class="help">
-    <summary>How do I get my data?</summary>
-    <div class="body">
-      <b>From Apple Health</b>
-      <ol>
-        <li>Open the <b>Health</b> app → tap your profile picture → <b>Export All Health Data</b> → <b>Export</b>.</li>
-        <li>Choose <b>Save to Files</b>, then tap <b>Import data</b> here and pick <b>export.zip</b>.</li>
-      </ol>
-      <b>From Strava</b> (on strava.com in Safari, not the Strava app)
-      <ol>
-        <li><b>One run:</b> open the activity → <b>⋯</b> menu → <b>Export GPX</b> or <b>Export Original</b>. Import the downloaded file here.</li>
-        <li><b>Everything:</b> profile picture → <b>Settings</b> → <b>My Account</b> → <b>Download or Delete Your Account</b> → <b>Request Your Archive</b>. Strava emails you a link; download the zip and import it here. Only runs are taken from it.</li>
-      </ol>
-      Runs found in both Health and Strava are merged, not doubled. Everything is read on your phone; nothing is uploaded.
-    </div>
-  </details>
 
   <div class="status" id="status" hidden><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
   <div id="msg"></div>
@@ -316,7 +330,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v16<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v17<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -559,8 +573,19 @@
     if (hs) {
       if (hs === 'walk') v = toMeters(v, unit);
       if (hs === 'kcal' && unit === 'kJ') v *= 0.239006;
-      const d = H.sum[hs] || (H.sum[hs] = {}), o = d[day] || (d[day] = {});
-      o[src] = (o[src] || 0) + v; // summed per app; overlapping apps are resolved later
+      // Spread the reading over the 5-minute slots it covers, kept separately per app.
+      const t0 = parseHealthDate(sd), t1 = parseHealthDate(getAttr(tag, 'endDate'));
+      if (!isFinite(t0)) return;
+      const SL = 300000, end = isFinite(t1) && t1 > t0 ? t1 : t0 + 1;
+      const per = H.slots[hs] || (H.slots[hs] = {});
+      for (let t = t0; t < end;) {
+        const d = new Date(t), mins = d.getHours() * 60 + d.getMinutes(), slot = Math.floor(mins / 5);
+        const slotEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, slot * 5 + 5).getTime();
+        const stop = Math.min(end, slotEnd), share = v * (stop - t) / (end - t0);
+        const dk = dayKey(d), bySrc = per[dk] || (per[dk] = {}), arr = bySrc[src] || (bySrc[src] = new Float32Array(288));
+        arr[slot] += share;
+        t = stop > t ? stop : t + SL;
+      }
     } else {
       const k = H_AVG[type];
       if (k === 'spo2' && v <= 1) v *= 100;
@@ -574,8 +599,16 @@
     if (!H) return 0;
     const out = state.health || { days: {}, sleep: {} };
     const touched = new Set();
-    for (const [k, days] of Object.entries(H.sum)) for (const [day, bySrc] of Object.entries(days)) {
-      (out.days[day] || (out.days[day] = {}))[k] = Math.round(Math.max(...Object.values(bySrc)) * 10) / 10; touched.add(day);
+    // In each 5-minute slot, use the device that counted the most. When both carried, nothing is doubled;
+    // when only one was with you (e.g. a run without your phone), its steps are added to the day.
+    if (!out.hours) out.hours = {};
+    for (const [k, days] of Object.entries(H.slots)) for (const [day, bySrc] of Object.entries(days)) {
+      const arrs = Object.values(bySrc), hours = new Array(24).fill(0);
+      let total = 0;
+      for (let s = 0; s < 288; s++) { let m = 0; for (const a of arrs) if (a[s] > m) m = a[s]; total += m; hours[Math.floor(s / 12)] += m; }
+      (out.days[day] || (out.days[day] = {}))[k] = Math.round(total * 10) / 10;
+      if (k === 'steps') out.hours[day] = hours.map(Math.round);
+      touched.add(day);
     }
     for (const [k, days] of Object.entries(H.avg)) for (const [day, [s, n]] of Object.entries(days)) {
       (out.days[day] || (out.days[day] = {}))[k] = Math.round(s / n * 10) / 10; touched.add(day);
@@ -598,7 +631,7 @@
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
     const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
-    const extra = { hrT: [], hrV: [], speed: [], stride: [], health: { sum: {}, avg: {}, sleep: {} } };
+    const extra = { hrT: [], hrV: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
@@ -1722,7 +1755,7 @@
     const keysAll = Hd ? [...Object.keys(Hd.days), ...Object.keys(Hd.sleep)].sort() : [];
     if (!keysAll.length) {
       $('content').innerHTML = `<div class="empty soon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS.health}</svg>
-        <div class="big">No health data yet</div>Tap <b>Import data</b> and pick your Apple Health <b>export.zip</b>. Sleep, steps, heart rate and more are read from every app and device that saves to Apple Health, including your iPhone, not just the watch.</div>`;
+        <div class="big">No health data yet</div>Tap <b>Import</b> at the top and pick your Apple Health <b>export.zip</b>. Sleep, steps, heart rate and more are read from every app and device that saves to Apple Health, including your iPhone, not just the watch.</div>`;
       return;
     }
     const oldest = keysAll[0];
@@ -1789,12 +1822,22 @@
           tip: p => `<b>${m.fmt(p[1])}</b><span>${esc(buckets[p[0]].tip)}</span>`
         }) : `<div class="note">Only one reading in this ${state.period === 'all' ? 'range' : state.period}: ${m.fmt(pts[0][1])} on ${esc(buckets[pts[0][0]].tip)}.</div>`;
       }
+      let extraChart = '';
+      if (m.k === 'steps' && Hd.hours) {
+        const hd = allKeys.map(k => Hd.hours[k]).filter(Boolean);
+        if (hd.length) {
+          const fmtHr = i => i === 0 ? '12a' : i < 12 ? i + 'a' : i === 12 ? '12p' : (i - 12) + 'p';
+          const hb = Array.from({ length: 24 }, (_, i) => ({ label: fmtHr(i), tip: `${fmtHr(i)}–${fmtHr((i + 1) % 24)}`, v: hd.reduce((s, a) => s + a[i], 0) / hd.length }));
+          extraChart = `<h3 class="hsub">By time of day <span>average steps per hour, ${hd.length} day${hd.length === 1 ? '' : 's'}</span></h3>` +
+            barChart('h-steps-hour', hb, { label: 'Steps by hour of day', color: '#ff6b35', yFmt: v => v >= 1000 ? (v / 1000) + 'k' : v, tipFmt: v => Math.round(v).toLocaleString() + ' steps' });
+        }
+      }
       html += `<div class="hcard"><div class="hhead"><span>${m.title}</span><div><b>${m.head(headV)}${m.unit ? `<small class="u">${m.unit()}</small>` : ''}</b><small>${m.headSub}</small></div></div>
-        ${chart}<div class="hmeta"><span><b>${days}</b> day${days === 1 ? '' : 's'} with data</span>${m.total ? `<span>Total <b>${Math.round(total).toLocaleString()}</b></span>` : ''}</div></div>`;
+        ${chart}${extraChart}<div class="hmeta"><span><b>${days}</b> day${days === 1 ? '' : 's'} with data</span>${m.total ? `<span>Total <b>${Math.round(total).toLocaleString()}</b></span>` : ''}</div></div>`;
       cards++;
     }
     if (!cards) html += `<div class="note" style="margin:6px 2px">No health data in this ${state.period}.</div>`;
-    html += `<div class="note" style="margin:10px 2px 0">From Apple Health: every app and device that saves there, including your iPhone. Where two devices count the same thing (like steps), the higher daily total is used so nothing is counted twice. Import a new export.zip to update.</div>`;
+    html += `<div class="note" style="margin:10px 2px 0">From Apple Health: every app and device that saves there, including your iPhone. Steps, distance, calories and flights are matched by time: when your phone and watch both count the same 5 minutes, the higher one is used; when only one was with you (like a run without your phone), its count is added. Import a new export.zip to update.</div>`;
     $('content').innerHTML = html;
     wireWeek();
     wireCharts();
@@ -1825,7 +1868,7 @@
     $('footer').hidden = !runs.length;
     if (!runs.length) {
       $('content').innerHTML = `<div class="empty"><div class="big">No runs yet</div>
-        Tap <b>Import data</b> and choose your Health <b>export.zip</b>.<br>
+        Tap <b>Import</b> at the top and choose your Health <b>export.zip</b>.<br>
         <button class="ghost" id="sampleBtn" type="button">Preview with sample runs</button></div>`;
       $('sampleBtn').onclick = () => { sampleRuns().forEach(addRun); save(); render(); };
       return;
@@ -2139,6 +2182,9 @@
 
   /* ---------- events ---------- */
   $('importBtn').onclick = () => $('fileInput').click();
+  const toggleHelp = open => { $('helpPanel').hidden = !open; $('helpBtn').setAttribute('aria-expanded', open); };
+  $('helpBtn').onclick = () => toggleHelp($('helpPanel').hidden);
+  $('helpClose').onclick = () => toggleHelp(false);
   $('fileInput').onchange = async e => {
     const files = [...e.target.files]; e.target.value = '';
     if (!files.length) return;
