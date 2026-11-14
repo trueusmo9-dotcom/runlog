@@ -138,7 +138,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v5</span>
+    <span>Saved on this device only · v6</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -155,6 +155,11 @@
   /* ---------- storage ---------- */
   function load() {
     try { state.runs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { state.runs = []; }
+    let repaired = false;
+    for (const r of state.runs) if (r.route && r.route.some(p => p[1] > 180 || p[0] > 90)) {
+      r.route = r.route.map(p => roundPt(fixPt(p))); repaired = true;
+    }
+    if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
   }
   function save() {
@@ -356,13 +361,24 @@
     return { runs, others };
   }
 
+  /* ---------- coordinate repair ----------
+     Nothing X writes negative coordinates as unsigned 32-bit numbers in 1e-7 degree units,
+     so e.g. -80.2825 becomes 349.2142. Subtracting 2^32 x 1e-7 = 429.4967296 restores it. */
+  const WRAP = 429.4967296;
+  function fixCoord(v, limit) {
+    if (v > limit && v - WRAP >= -limit && v - WRAP <= 0) return v - WRAP;
+    if (v > limit && v <= 360 && limit === 180) return v - 360;
+    return v;
+  }
+  const fixPt = p => [fixCoord(p[0], 90), fixCoord(p[1], 180)];
+
   /* ---------- GPX ---------- */
   function parseGpx(text) {
     const pts = [], times = [];
     for (const m of text.matchAll(/<trkpt\b([^>]*?)(?:\/>|>([\s\S]*?)<\/trkpt>)/g)) {
       const a = attrs(m[1]); const la = parseFloat(a.lat), lo = parseFloat(a.lon);
       if (!isFinite(la) || !isFinite(lo)) continue;
-      pts.push([la, lo]);
+      pts.push(fixPt([la, lo]));
       const t = m[2] && m[2].match(/<time>([^<]+)<\/time>/);
       times.push(t ? Date.parse(t[1]) : NaN);
     }
