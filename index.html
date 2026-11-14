@@ -79,6 +79,7 @@
   .bigmap{background:var(--card2);border-radius:12px;overflow:hidden;aspect-ratio:4/3}
   .bigmap svg{width:100%;height:100%;display:block}
   .bigmap.leaflet-container{background:#1a1d22;font:11px Inter,system-ui,sans-serif}
+  .bigmap .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.85) saturate(.6)}
   .leaflet-control-attribution{background:rgba(14,16,19,.75)!important;color:#8a919c!important}
   .leaflet-control-attribution a{color:#b8bec8!important}
   .leaflet-bar a{background:#1e2229!important;color:#eef0f3!important;border-color:#2a2f37!important}
@@ -524,7 +525,7 @@
     initMaps();
   }
 
-  /* ---------- real street maps (Leaflet + OpenStreetMap data, CARTO dark tiles) ---------- */
+  /* ---------- real street maps (Leaflet + OpenStreetMap tiles, darkened with CSS) ---------- */
   const liveMaps = [];
   function destroyMaps() { while (liveMaps.length) { try { liveMaps.pop().remove(); } catch {} } }
   function initMaps() {
@@ -537,9 +538,10 @@
         zoomControl: true, attributionControl: true, scrollWheelZoom: false,
         dragging: true, touchZoom: true, tap: false
       });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19, subdomains: 'abcd',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
       L.polyline(r.route, { color: '#ff6b35', weight: 10, opacity: .25, lineCap: 'round', lineJoin: 'round' }).addTo(map);
       const line = L.polyline(r.route, { color: '#ff6b35', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(map);
