@@ -229,6 +229,10 @@
   .sec{margin-top:18px}
   .sec h3,.zhead h3{font:600 12px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:0 0 8px}
   .sec h3.sub{margin-top:16px}
+  .sechead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .sechead h3{margin:0}
+  .seg.hrsw button{padding:5px 12px;font-size:12.5px}
+  .badge.polar{background:#3a1d22;color:#ff9a9d}
   .note{font-size:12px;color:var(--muted);margin-top:6px}
   .chart{position:relative;background:var(--card2);border-radius:12px;padding:6px 4px 0}
   .chart svg{width:100%;height:auto;display:block;touch-action:pan-y;user-select:none;-webkit-user-select:none}
@@ -330,7 +334,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v17<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v18<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -631,7 +635,7 @@
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
     const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
-    const extra = { hrT: [], hrV: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
+    const extra = { hrT: [], hrV: [], hrP: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
@@ -649,7 +653,7 @@
           if (H_SUM[type] || H_AVG[type] || type === SLEEP_T) collectHealth(extra.health, type, tag);
           if (type === 'HKQuantityTypeIdentifierHeartRate') {
             const t = parseHealthDate(getAttr(tag, 'startDate')), v = parseFloat(getAttr(tag, 'value'));
-            if (isFinite(t) && isFinite(v)) { extra.hrT.push(t); extra.hrV.push(v); }
+            if (isFinite(t) && isFinite(v)) { extra.hrT.push(t); extra.hrV.push(v); extra.hrP.push(isPolar(getAttr(tag, 'sourceName')) ? 1 : 0); }
           } else if (type === 'HKQuantityTypeIdentifierRunningSpeed' || type === 'HKQuantityTypeIdentifierRunningStrideLength') {
             extra[type.endsWith('Speed') ? 'speed' : 'stride'].push({ t0: parseHealthDate(getAttr(tag, 'startDate')), t1: parseHealthDate(getAttr(tag, 'endDate')), v: getAttr(tag, 'value'), unit: getAttr(tag, 'unit') });
           }
@@ -736,20 +740,57 @@
     return out;
   }
   function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+  /* ---------- heart rate from two devices (Polar chest strap + watch) ---------- */
+  const isPolar = s => /polar/i.test(s || '');
+  const endOf = r => r.end || r.start + (r.duration || 0) * 1000;
+  // Share of the shorter recording that overlaps the other one (1 = fully inside).
+  function overlapShare(a, b) {
+    const s = Math.max(a.start, b.start), e = Math.min(endOf(a), endOf(b));
+    const shorter = Math.min(endOf(a) - a.start, endOf(b) - b.start);
+    return shorter > 0 && e > s ? (e - s) / shorter : 0;
+  }
+  function hrSet(pts) {
+    return { avg: Math.round(pts.reduce((s, p) => s + p[1], 0) / pts.length), max: Math.round(Math.max(...pts.map(p => p[1]))),
+      series: thin(pts, 360).map(([s, v]) => [Math.round(s), Math.round(v)]) };
+  }
+  // Heart rate actually shown for a run: the one picked with the switch, else Polar, else the watch.
+  function hrOf(r) {
+    const S = Object.assign({}, r.hrBySrc || {});
+    if (!S.watch && r.hrSeries) S.watch = { series: r.hrSeries, avg: r.hr, max: r.hrMax }; // runs imported before v18
+    const keys = ['polar', 'watch'].filter(k => S[k]);
+    const pick = r.hrPick && S[r.hrPick] ? r.hrPick : keys[0] || null;
+    const cur = pick ? S[pick] : null;
+    return { pick, keys, series: cur ? cur.series : null, avg: cur ? cur.avg : r.hr || 0, max: cur ? cur.max : r.hrMax || 0 };
+  }
+  // A run recorded on both devices shows up twice in Apple Health: merge them, keeping the watch as the main recording.
+  function combineRuns(list) {
+    const out = [];
+    for (const r of [...list].sort((a, b) => isPolar(a.source) - isPolar(b.source))) {
+      const m = out.find(o => overlapShare(o, r) >= 0.5);
+      if (!m) { out.push(r); continue; }
+      m.hrWin = [Math.min(m.hrWin ? m.hrWin[0] : m.start, r.start), Math.max(m.hrWin ? m.hrWin[1] : endOf(m), endOf(r))];
+      for (const f of ['distance', 'duration', 'kcal', 'stride', 'speedAvg']) if (!m[f] && r[f]) m[f] = r[f];
+      if (!m.routePath && r.routePath && !isPolar(r.source)) m.routePath = r.routePath;
+      if (r.source && !m.source.includes(r.source)) m.source += ' + ' + r.source;
+    }
+    return out;
+  }
+
   function enrichRuns(runs, x) {
     if (!x) return;
-    let T = x.hrT, V = x.hrV, sorted = true;
+    let T = x.hrT, V = x.hrV, P = x.hrP, sorted = true;
     for (let i = 1; i < T.length; i++) if (T[i] < T[i - 1]) { sorted = false; break; }
-    if (!sorted) { const idx = T.map((_, i) => i).sort((p, q) => T[p] - T[q]); T = idx.map(i => x.hrT[i]); V = idx.map(i => x.hrV[i]); }
+    if (!sorted) { const idx = T.map((_, i) => i).sort((p, q) => T[p] - T[q]); T = idx.map(i => x.hrT[i]); V = idx.map(i => x.hrV[i]); P = idx.map(i => x.hrP[i]); }
     for (const r of runs) {
-      const a = r.start, b = r.end || r.start + r.duration * 1000;
-      const pts = [];
-      for (let i = lowerBound(T, a); i < T.length && T[i] <= b; i++) pts.push([(T[i] - a) / 1000, V[i]]);
-      if (pts.length >= 3) {
-        r.hr = Math.round(pts.reduce((s, p) => s + p[1], 0) / pts.length);
-        r.hrMax = Math.round(Math.max(...pts.map(p => p[1])));
-        r.hrSeries = thin(pts, 360).map(([s, v]) => [Math.round(s), Math.round(v)]);
+      const a = r.hrWin ? r.hrWin[0] : r.start, b = r.hrWin ? r.hrWin[1] : endOf(r);
+      const by = { watch: [], polar: [] };
+      for (let i = lowerBound(T, a); i < T.length && T[i] <= b; i++) by[P[i] ? 'polar' : 'watch'].push([(T[i] - r.start) / 1000, V[i]]);
+      for (const k of ['watch', 'polar']) {
+        const pts = by[k].filter(p => p[0] >= -60); // keep readings from a minute before the watch start
+        if (pts.length >= 3) (r.hrBySrc || (r.hrBySrc = {}))[k] = hrSet(pts);
       }
+      if (r.hrBySrc) { const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max; }
+      delete r.hrWin;
       const near = list => list.find(o => isFinite(o.t0) && o.t0 >= a - 120000 && o.t0 <= b + 120000);
       if (!r.stride) { const s = near(x.stride); if (s) r.stride = toMeters(s.v, s.unit); }
       if (!r.speedAvg) { const s = near(x.speed); if (s) r.speedAvg = toMps(s.v, s.unit); }
@@ -856,6 +897,7 @@
   function sourceOf(act, fallback) {
     if (fallback) return fallback;
     if (act.head && /strava/i.test(act.head)) return 'Strava';
+    if (act.head && /polar/i.test(act.head)) return 'Polar Flow';
     if (act.head && /Apple Health/i.test(act.head)) return 'Apple Health';
     return act.kind.toUpperCase() + ' file';
   }
@@ -881,9 +923,8 @@
     const hp = [];
     for (let i = 0; i < S.t.length; i++) if (S.hr[i] > 30 && S.hr[i] < 250 && isFinite(S.t[i])) hp.push([(S.t[i] - start) / 1000, S.hr[i]]);
     if (hp.length >= 3) {
-      r.hr = Math.round(hp.reduce((a, b) => a + b[1], 0) / hp.length);
-      r.hrMax = Math.round(Math.max(...hp.map(x => x[1])));
-      r.hrSeries = thin(hp, 360).map(([a, b]) => [Math.round(a), Math.round(b)]);
+      r.hrBySrc = { [isPolar(source) ? 'polar' : 'watch']: hrSet(hp) };
+      const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max;
     } else { if (m.hrAvg) r.hr = m.hrAvg; if (m.hrMax) r.hrMax = m.hrMax; }
     // Running files store cadence per foot, so double it for steps per minute.
     const cs = S.cad.filter(v => v > 20 && v < 130);
@@ -941,12 +982,16 @@
   function addRun(r) {
     if (!isFinite(r.start)) return false;
     const key = Math.round(r.start / 60000);
-    const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000);
+    const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000 || overlapShare(x, r) >= 0.5);
     if (existing) {
-      // Fill in only what the saved run is missing, so a second source never overwrites good data.
+      // A watch recording replaces the route and stats of a run that so far only had Polar Beat data.
+      if (isPolar(existing.source) && !existing.source.includes('+') && r.source && !isPolar(r.source))
+        for (const f of ['route', 'prof', 'gpsDist', 'distance', 'duration', 'start', 'end', 'kcal', 'stride', 'speedAvg', 'cadenceSpm', 'indoor', 'city']) if (r[f] != null) existing[f] = r[f];
+      // Otherwise fill in only what the saved run is missing, so a second source never overwrites good data.
       if (r.route && (!existing.route || (r.prof && !existing.prof))) existing.route = r.route;
       for (const f of ['distance', 'duration', 'kcal', 'end', 'hr', 'hrMax', 'hrSeries', 'stride', 'speedAvg', 'prof', 'gpsDist', 'cadenceSpm', 'name'])
         if (!existing[f] && r[f]) existing[f] = r[f];
+      if (r.hrBySrc) existing.hrBySrc = Object.assign(existing.hrBySrc || {}, r.hrBySrc);
       if (r.source && existing.source && !existing.source.includes(r.source)) existing.source += ' + ' + r.source;
       return false;
     }
@@ -961,7 +1006,8 @@
     const xml = entries.find(e => /(^|\/)export\.xml$/i.test(e.name));
     if (xml) {
       setStatus('Scanning your health data…', 0);
-      const { runs, others, extra } = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
+      const scan = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
+      const { others, extra } = scan, runs = combineRuns(scan.runs);
       enrichRuns(runs, extra);
       const healthDays = finalizeHealth(extra.health);
       const withRoutes = runs.filter(r => r.routePath);
@@ -1009,7 +1055,8 @@
       if (n.endsWith('.zip')) res = await importZip(f);
       else if (n.endsWith('.xml')) {
         setStatus('Scanning your health data…', 0);
-        const { runs, others, extra } = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
+        const scan = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
+        const { others, extra } = scan, runs = combineRuns(scan.runs);
         enrichRuns(runs, extra);
         const healthDays = finalizeHealth(extra.health);
         let added = 0; for (const r of runs) if (addRun(r)) added++;
@@ -1878,7 +1925,7 @@
     let html = periodHtml(runs, shown) + `<h2>${state.period === 'all' ? 'All runs' : 'Runs ' + (state.periodOffset === 0 ? PERIOD_NAMES[state.period] : 'in this ' + state.period)}</h2>`;
     if (!shown.length) html += `<div class="note" style="margin:0 2px 8px">No runs in this ${state.period}.</div>`;
     for (const r of shown) {
-      const badge = r.indoor ? '<span class="badge">Treadmill</span>' : (r.source === 'Sample' ? '<span class="badge">Sample</span>' : '');
+      const badge = (r.indoor ? '<span class="badge">Treadmill</span>' : (r.source === 'Sample' ? '<span class="badge">Sample</span>' : '')) + (r.hrBySrc && r.hrBySrc.polar ? '<span class="badge polar">Polar HR</span>' : '');
       html += `<a class="run" href="#run-${r.id}" data-id="${r.id}">
         <div class="top">
           <div class="info">
@@ -1912,6 +1959,9 @@
       ${detailHtml(r)}
     </div>`;
     $('backBtn').onclick = goToList;
+    document.querySelectorAll('[data-hrpick]').forEach(b => b.onclick = () => {
+      r.hrPick = b.dataset.hrpick; const cur = hrOf(r); r.hr = cur.avg; r.hrMax = cur.max; save(); render();
+    });
     state.shownRun = r.id;
     window.scrollTo(0, same ? y : 0);
     wireCharts();
@@ -2094,8 +2144,8 @@
     { z: 'Z4', name: 'Threshold', lo: .8, hi: .9, c: '#ff7a45' },
     { z: 'Z5', name: 'Max', lo: .9, hi: 9, c: '#ffb894' }
   ];
-  function zonesHtml(r) {
-    const s = r.hrSeries, max = state.maxHr, secs = ZONES.map(() => 0);
+  function zonesHtml(s) {
+    const max = state.maxHr, secs = ZONES.map(() => 0);
     for (let i = 0; i < s.length - 1; i++) {
       const dt = Math.min(s[i + 1][0] - s[i][0], 30), f = s[i][1] / max;
       secs[ZONES.findIndex(z => f < z.hi)] += dt;
@@ -2118,15 +2168,15 @@
       ? `<div class="bigmap" data-map="${r.id}">${routeSvg(r.route, 400, 300, { pad: 22, stroke: 3, grid: true, marker: 5.5 })}</div>
          <div class="legend"><span><i style="background:var(--go)"></i>Start</span><span><i style="border:2px solid var(--accent2);width:7px;height:7px"></i>Finish</span><span>${typeof L !== 'undefined' ? 'Drag and pinch to explore' : 'Map needs internet'}</span></div>`
       : '';
-    const cad = cadenceOf(r);
+    const cad = cadenceOf(r), hrNow = hrOf(r);
     const strideTxt = r.stride ? (U === 'km' ? r.stride.toFixed(2) + ' m' : (r.stride / 0.3048).toFixed(1) + ' ft') : '–';
     let html = `${map}<div class="grid">
       <div class="stat"><div class="k">Distance</div><div class="v">${r.distance ? fmtDist(r.distance) + ' ' + U : '–'}</div></div>
       <div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div>
       <div class="stat"><div class="k">Avg pace</div><div class="v">${fmtPace(r.duration, r.distance)} /${U}</div></div>
       <div class="stat"><div class="k">Avg speed</div><div class="v">${fmtSpeed(r.duration, r.distance)} ${speedUnit()}</div></div>
-      <div class="stat"><div class="k">Avg HR</div><div class="v">${r.hr ? r.hr + ' bpm' : '–'}</div></div>
-      <div class="stat"><div class="k">Max HR</div><div class="v">${r.hrMax ? r.hrMax + ' bpm' : '–'}</div></div>
+      <div class="stat"><div class="k">Avg HR${hrNow.pick === 'polar' ? ' · Polar' : ''}</div><div class="v">${hrNow.avg ? hrNow.avg + ' bpm' : '–'}</div></div>
+      <div class="stat"><div class="k">Max HR${hrNow.pick === 'polar' ? ' · Polar' : ''}</div><div class="v">${hrNow.max ? hrNow.max + ' bpm' : '–'}</div></div>
       <div class="stat"><div class="k">Cadence</div><div class="v">${cad ? cad + ' spm' : '–'}</div></div>
       <div class="stat"><div class="k">Stride</div><div class="v">${strideTxt}</div></div>
       <div class="stat"><div class="k">Calories</div><div class="v">${r.kcal ? r.kcal + ' kcal' : '–'}</div></div>
@@ -2161,14 +2211,15 @@
     html += `</div>`;
 
     // Heart rate
-    html += `<div class="sec"><h3>Heart rate</h3>`;
-    if (r.hrSeries && r.hrSeries.length > 3) {
-      html += lineChart('hr-' + r.id, r.hrSeries, {
+    const hrSw = hrNow.keys.length > 1 ? `<div class="seg hrsw" role="group" aria-label="Heart rate source">${hrNow.keys.map(k => `<button type="button" data-hrpick="${k}" aria-pressed="${k === hrNow.pick}">${k === 'polar' ? 'Polar' : 'Watch'}</button>`).join('')}</div>` : '';
+    html += `<div class="sec"><div class="sechead"><h3>Heart rate</h3>${hrSw}</div>`;
+    if (hrNow.series && hrNow.series.length > 3) {
+      html += lineChart('hr-' + r.id, hrNow.series, {
         label: 'Heart rate over time', color: '#ff5a5f', area: true,
         yTicks: (lo, hi) => niceTicks(Math.max(40, lo - 5), hi + 5, 4), yFmt: v => Math.round(v),
         xTicks: niceTimeTicks, xFmt: v => Math.round(v / 60) + ' min',
         tip: p => `<b>${p[1]} bpm</b><span>at ${mmss(p[0])}</span>`
-      }) + `<div class="note">${r.hrSeries.length} readings from your watch during this run.</div>` + zonesHtml(r);
+      }) + `<div class="note">From ${hrNow.pick === 'polar' ? 'your Polar chest strap (Polar Beat)' : 'your watch'}${hrNow.keys.length > 1 ? ` · ${hrNow.pick === 'polar' ? 'Watch' : 'Polar'} avg ${hrOf({ ...r, hrPick: hrNow.keys.find(k => k !== hrNow.pick) }).avg} bpm` : ''}.</div>` + zonesHtml(hrNow.series);
     } else {
       html += `<div class="note">No heart-rate readings found for this run. Import your Health export.zip again to look for them.</div>`;
     }
