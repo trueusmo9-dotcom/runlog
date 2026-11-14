@@ -148,13 +148,29 @@
   .kmlab{min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#0e1013;color:#eef0f3;font:700 10.5px Inter;display:flex;align-items:center;justify-content:center;border:1.5px solid #ffb38f}
   .pp-pop{font:13px Inter;color:#0e1013;text-align:center}
   .pp-pop button{margin-top:6px;padding:6px 10px;border:0;border-radius:8px;background:#5a1f1f;color:#fff;font:600 13px Inter}
-  .sports{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 10px}
-  .sports button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--muted);font:600 12.5px Inter;-webkit-tap-highlight-color:transparent}
+  .sports{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}
+  .sports button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--muted);font:600 12.5px Inter;-webkit-tap-highlight-color:transparent}
   .sports button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a0d06}
   body.in-run .sports{display:none}
   .empty.soon svg{color:var(--accent);margin-bottom:6px}
   .soon-tag{display:inline-block;margin-top:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);font:600 11px Inter;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
   .rec-h b.dim{color:var(--muted)}
+  .tabs[hidden]{display:none!important}
+  .week.slim{padding:8px 6px}
+  .week.slim .wmid{padding:4px 0}
+  .hcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;margin:10px 0}
+  .hhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px}
+  .hhead > span{font:600 13px Inter;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding-top:4px}
+  .hhead > div{text-align:right}
+  .hhead b{display:block;font:700 28px/1 var(--num)}
+  .hhead b small.u{font:600 14px var(--num);color:var(--muted);margin-left:3px}
+  .hhead > div > small{font-size:11px;color:var(--muted)}
+  .hmeta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:8px}
+  .hmeta b{color:var(--text);font-weight:600}
+  .stages{display:flex;gap:2px;height:10px;margin-top:12px;border-radius:5px;overflow:hidden}
+  .stages i{display:block;height:100%}
+  .slegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:6px}
+  .slegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
   .tabs{display:flex;gap:6px;margin:0 0 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
   .tabs button{all:unset;flex:1;text-align:center;padding:9px 0;border-radius:9px;font:600 14px Inter;color:var(--muted);cursor:pointer}
   .tabs button[aria-pressed="true"]{background:var(--card2);color:var(--text)}
@@ -273,12 +289,12 @@
 
   <button class="import" id="importBtn" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
-    Import run data
+    Import data
   </button>
   <input type="file" id="fileInput" multiple>
 
   <details class="help">
-    <summary>How do I get my run data?</summary>
+    <summary>How do I get my data?</summary>
     <div class="body">
       <b>From Apple Health</b>
       <ol>
@@ -300,7 +316,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v15<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v16<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -310,7 +326,7 @@
 
 <script>
 (() => {
-  const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory';
+  const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit', INV_KEY = 'runlog.inventory', HEALTH_KEY = 'runlog.health';
   const state = { runs: [], unit: 'km', open: new Set(), inventory: null, invOpen: false, invAll: false, maxHr: 190, period: 'week', periodOffset: 0, listScroll: null, cameFromList: false, shownRun: null, cityBusy: false, planForm: null, closedFolders: new Set(), lastFolder: '' };
   const $ = id => document.getElementById(id);
 
@@ -324,6 +340,7 @@
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
     try { localStorage.removeItem(INV_KEY); } catch {}
+    try { state.health = JSON.parse(localStorage.getItem(HEALTH_KEY) || 'null'); } catch {}
     try { const pd = localStorage.getItem('runlog.period'); if (['week', 'month', 'year', 'all'].includes(pd)) state.period = pd; } catch {}
     try { const m = parseInt(localStorage.getItem('runlog.maxhr'), 10); if (m >= 140 && m <= 230) state.maxHr = m; } catch {}
   }
@@ -519,11 +536,69 @@
     if (d && (!o.last || d > o.last)) o.last = d;
   }
 
+  /* ---------- daily health data (all apps & devices) ---------- */
+  const SLEEP_T = 'HKCategoryTypeIdentifierSleepAnalysis';
+  const H_SUM = { HKQuantityTypeIdentifierStepCount: 'steps', HKQuantityTypeIdentifierActiveEnergyBurned: 'kcal', HKQuantityTypeIdentifierDistanceWalkingRunning: 'walk',
+    HKQuantityTypeIdentifierFlightsClimbed: 'flights', HKQuantityTypeIdentifierAppleExerciseTime: 'exercise' };
+  const H_AVG = { HKQuantityTypeIdentifierRestingHeartRate: 'rhr', HKQuantityTypeIdentifierHeartRateVariabilitySDNN: 'hrv', HKQuantityTypeIdentifierOxygenSaturation: 'spo2',
+    HKQuantityTypeIdentifierRespiratoryRate: 'resp', HKQuantityTypeIdentifierVO2Max: 'vo2', HKQuantityTypeIdentifierBodyMass: 'weight', HKQuantityTypeIdentifierWalkingHeartRateAverage: 'walkhr' };
+  function collectHealth(H, type, tag) {
+    const sd = getAttr(tag, 'startDate'), src = getAttr(tag, 'sourceName');
+    if (type === SLEEP_T) {
+      const ed = getAttr(tag, 'endDate'), v = getAttr(tag, 'value'), t0 = parseHealthDate(sd), t1 = parseHealthDate(ed);
+      if (!(t1 > t0)) return;
+      const stage = /InBed/.test(v) ? 'inBed' : /Awake/.test(v) ? 'awake' : /Deep/.test(v) ? 'deep' : /REM/.test(v) ? 'rem' : /Core/.test(v) ? 'core' : 'asleep';
+      const night = H.sleep[ed.slice(0, 10)] || (H.sleep[ed.slice(0, 10)] = {});
+      const s = night[src] || (night[src] = { inBed: 0, awake: 0, deep: 0, rem: 0, core: 0, asleep: 0, start: Infinity, end: 0 });
+      s[stage] += (t1 - t0) / 1000; s.start = Math.min(s.start, t0); s.end = Math.max(s.end, t1);
+      return;
+    }
+    let v = parseFloat(getAttr(tag, 'value'));
+    if (!isFinite(v)) return;
+    const unit = getAttr(tag, 'unit'), day = sd.slice(0, 10), hs = H_SUM[type];
+    if (hs) {
+      if (hs === 'walk') v = toMeters(v, unit);
+      if (hs === 'kcal' && unit === 'kJ') v *= 0.239006;
+      const d = H.sum[hs] || (H.sum[hs] = {}), o = d[day] || (d[day] = {});
+      o[src] = (o[src] || 0) + v; // summed per app; overlapping apps are resolved later
+    } else {
+      const k = H_AVG[type];
+      if (k === 'spo2' && v <= 1) v *= 100;
+      if (k === 'weight') v = unit === 'lb' ? v * 0.45359237 : unit === 'g' ? v / 1000 : v;
+      const d = H.avg[k] || (H.avg[k] = {}), o = d[day] || (d[day] = [0, 0]);
+      o[0] += v; o[1]++;
+    }
+  }
+  // Like Apple Health, don't add up two devices counting the same steps: take the larger daily total.
+  function finalizeHealth(H) {
+    if (!H) return 0;
+    const out = state.health || { days: {}, sleep: {} };
+    const touched = new Set();
+    for (const [k, days] of Object.entries(H.sum)) for (const [day, bySrc] of Object.entries(days)) {
+      (out.days[day] || (out.days[day] = {}))[k] = Math.round(Math.max(...Object.values(bySrc)) * 10) / 10; touched.add(day);
+    }
+    for (const [k, days] of Object.entries(H.avg)) for (const [day, [s, n]] of Object.entries(days)) {
+      (out.days[day] || (out.days[day] = {}))[k] = Math.round(s / n * 10) / 10; touched.add(day);
+    }
+    for (const [night, bySrc] of Object.entries(H.sleep)) {
+      let best = null, bestV = -1;
+      for (const s of Object.values(bySrc)) { const a = s.deep + s.rem + s.core + s.asleep, v = a > 0 ? a + 1e9 : s.inBed; if (v > bestV) { bestV = v; best = s; } }
+      const r = x => Math.round(x);
+      out.sleep[night] = { asleep: r(best.deep + best.rem + best.core + best.asleep), inBed: r(best.inBed), deep: r(best.deep), rem: r(best.rem), core: r(best.core),
+        awake: r(best.awake), start: isFinite(best.start) ? best.start : null, end: best.end || null };
+      touched.add(night);
+    }
+    out.updated = Date.now();
+    state.health = out;
+    try { localStorage.setItem(HEALTH_KEY, JSON.stringify(out)); } catch {}
+    return touched.size;
+  }
+
   async function scanHealthXml(byteStream, totalBytes, onProgress) {
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
     const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
-    const extra = { hrT: [], hrV: [], speed: [], stride: [] };
+    const extra = { hrT: [], hrV: [], speed: [], stride: [], health: { sum: {}, avg: {}, sleep: {} } };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
       const { value, done } = await reader.read();
@@ -538,6 +613,7 @@
         if (m[1] === 'Record') {
           const tag = buf.slice(s, gt + 1), type = getAttr(tag, 'type');
           bump(inv.records, type + '|' + getAttr(tag, 'sourceName'), { type, src: getAttr(tag, 'sourceName'), unit: getAttr(tag, 'unit') }, getAttr(tag, 'startDate').slice(0, 10));
+          if (H_SUM[type] || H_AVG[type] || type === SLEEP_T) collectHealth(extra.health, type, tag);
           if (type === 'HKQuantityTypeIdentifierHeartRate') {
             const t = parseHealthDate(getAttr(tag, 'startDate')), v = parseFloat(getAttr(tag, 'value'));
             if (isFinite(t) && isFinite(v)) { extra.hrT.push(t); extra.hrV.push(v); }
@@ -854,6 +930,7 @@
       setStatus('Scanning your health data…', 0);
       const { runs, others, extra } = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
       enrichRuns(runs, extra);
+      const healthDays = finalizeHealth(extra.health);
       const withRoutes = runs.filter(r => r.routePath);
       let i = 0;
       for (const r of withRoutes) {
@@ -871,7 +948,7 @@
       }
       let added = 0;
       for (const r of runs) if (addRun(r)) added++;
-      return { added, found: runs.length, others, routes: runs.filter(r => r.route).length };
+      return { added, found: runs.length, others, routes: runs.filter(r => r.route).length, healthDays };
     }
     const csv = entries.find(e => /(^|\/)activities\.csv$/i.test(e.name));
     if (csv || entries.some(e => /(^|\/)activities\/[^/]+\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name))) return importStravaZip(file, entries, csv);
@@ -892,7 +969,7 @@
   }
 
   async function importFiles(files) {
-    const totals = { added: 0, found: 0, others: 0, routes: 0 }, skipped = [];
+    const totals = { added: 0, found: 0, others: 0, routes: 0, healthDays: 0 }, skipped = [];
     for (const f of files) {
       const n = f.name.toLowerCase();
       let res = null;
@@ -901,14 +978,15 @@
         setStatus('Scanning your health data…', 0);
         const { runs, others, extra } = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
         enrichRuns(runs, extra);
+        const healthDays = finalizeHealth(extra.health);
         let added = 0; for (const r of runs) if (addRun(r)) added++;
-        res = { added, found: runs.length, others, routes: 0 };
+        res = { added, found: runs.length, others, routes: 0, healthDays };
       } else if (/\.(gpx|tcx|fit)(\.gz)?$/.test(n)) {
         const act = await readActivity(f.name, f.stream());
         const r = act && runFromTrack(act, sourceOf(act));
         res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: r.route ? 1 : 0 } : { added: 0, found: 0, others: 0, routes: 0 };
       } else skipped.push(f.name);
-      if (res) for (const k in totals) totals[k] += res[k];
+      if (res) for (const k in totals) totals[k] += res[k] || 0;
     }
     return { ...totals, skipped };
   }
@@ -1513,14 +1591,16 @@
 
   /* ---------- sports: Running (live), Biking & Swimming (layout only for now) ---------- */
   const ICONS = {
+    health: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M5 12h3l1.5-2.5 2 4.5 1.5-2h3"/>',
     run: '<path d="M13 4.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/><path d="M7 21l3-6 3 2v5"/><path d="M6 12l3-4 4 1 2 3 3 1"/><path d="M10 15l1.5-5"/>',
     bike: '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5l4-7h5l4 7M9.5 9.5L12 16.5h-3M14.5 9.5l-1-3h-2"/>',
     swim: '<path d="M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M5 13l5-5 3 2 3 3"/>'
   };
   const SPORTS = {
-    run: { name: 'Running', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
-    bike: { name: 'Biking', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
-    swim: { name: 'Swimming', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] }
+    health: { name: 'Health', tabs: [['health', 'Overview', '#health']] },
+    run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
+    bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
+    swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] }
   };
   function routeFromHash() {
     const hs = location.hash;
@@ -1532,6 +1612,7 @@
   function renderNavs(sport, view) {
     $('sports').innerHTML = Object.entries(SPORTS).map(([k, s]) =>
       `<button type="button" data-sport="${k}" aria-pressed="${k === sport}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg><span>${s.name}</span></button>`).join('');
+    $('tabs').hidden = SPORTS[sport].tabs.length < 2;
     $('tabs').innerHTML = SPORTS[sport].tabs.map(([v, label, hash]) =>
       `<button type="button" data-hash="${hash}" aria-pressed="${v === view}">${label}</button>`).join('');
     $('sports').querySelectorAll('[data-sport]').forEach(b => b.onclick = () => {
@@ -1568,6 +1649,157 @@
     wireWeek();
   }
 
+  /* ---------- Health screen ---------- */
+  const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const fmtHM = sec => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`; };
+  const fmtClock = mins => { const d = new Date(2000, 0, 1, 0, Math.round(mins)); return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); };
+  // Buckets for the selected period: days for week/month, months for year/all time.
+  function healthBuckets(oldestKey) {
+    const [a, b] = periodRange(state.period, state.periodOffset);
+    const out = [];
+    if (state.period === 'week' || state.period === 'month') {
+      for (let d = new Date(a); d.getTime() < b; d.setDate(d.getDate() + 1)) {
+        const k = dayKey(d);
+        out.push({ keys: [k], label: state.period === 'week' ? d.toLocaleDateString(undefined, { weekday: 'narrow' }) : String(d.getDate()),
+          tip: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }), future: d.getTime() > Date.now() });
+      }
+    } else {
+      let start = state.period === 'year' ? new Date(a) : new Date(oldestKey + 'T12:00:00');
+      start = new Date(start.getFullYear(), start.getMonth(), 1);
+      const end = state.period === 'year' ? new Date(b) : new Date();
+      for (let m = new Date(start); m < end; m.setMonth(m.getMonth() + 1)) {
+        const keys = [], next = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+        for (let d = new Date(m); d < next; d.setDate(d.getDate() + 1)) keys.push(dayKey(d));
+        const multiYear = state.period === 'all';
+        out.push({ keys, label: m.toLocaleDateString(undefined, { month: 'narrow' }) + (multiYear && m.getMonth() === 0 ? "'" + String(m.getFullYear()).slice(2) : ''),
+          tip: m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }), future: m.getTime() > Date.now(), monthly: true });
+      }
+    }
+    return out;
+  }
+  function barChart(key, buckets, o) {
+    const W = 340, H = 150, L = 38, R = 8, T = 10, B = 22, n = buckets.length;
+    const vals = buckets.map(b => b.v), max = Math.max(...vals.filter(v => v != null), 0);
+    const yt = niceTicks(0, max || 1, 3), yMax = yt[yt.length - 1];
+    const slot = (W - L - R) / n, bw = Math.max(2, Math.min(24, slot - 2));
+    const sx = i => L + slot * (i + .5), sy = v => H - B - (v / yMax) * (H - T - B);
+    const grid = yt.map(v => `<line x1="${L}" x2="${W - R}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}" class="gl"/><text x="${L - 6}" y="${(sy(v) + 3.5).toFixed(1)}" text-anchor="end" class="ax">${o.yFmt(v)}</text>`).join('');
+    const bars = buckets.map((b, i) => {
+      if (b.v == null || b.v <= 0) return '';
+      const x = sx(i) - bw / 2, y = sy(b.v), base = H - B, r = Math.min(4, bw / 2, base - y);
+      return `<path d="M${x.toFixed(1)} ${base}V${(y + r).toFixed(1)}Q${x.toFixed(1)} ${y.toFixed(1)} ${(x + r).toFixed(1)} ${y.toFixed(1)}H${(x + bw - r).toFixed(1)}Q${(x + bw).toFixed(1)} ${y.toFixed(1)} ${(x + bw).toFixed(1)} ${(y + r).toFixed(1)}V${base}Z" fill="${o.color}"/>`;
+    }).join('');
+    const every = Math.ceil(n / 8);
+    const xl = buckets.map((b, i) => i % every ? '' : `<text x="${sx(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" class="ax">${esc(b.label)}</text>`).join('');
+    const avg = o.avg != null && o.avg > 0 ? `<line x1="${L}" x2="${W - R}" y1="${sy(o.avg).toFixed(1)}" y2="${sy(o.avg).toFixed(1)}" stroke="#eef0f3" stroke-opacity=".45" stroke-width="1"/>` : '';
+    CHARTS[key] = { data: buckets.map((b, i) => [i, b.v || 0]), sx, sy: v => sy(v), W, H, T, B, tip: p => { const b = buckets[p[0]]; return `<b>${b.v != null ? o.tipFmt(b.v) : 'No data'}</b><span>${esc(b.tip)}${b.monthly && b.v != null ? ' · daily avg' : ''}</span>`; } };
+    return `<div class="chart" data-chart="${key}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">
+      ${grid}<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" class="bl"/>${bars}${avg}${xl}
+      <g class="cur" style="display:none"><line y1="${T}" y2="${H - B}" class="cl"/><circle r="4" fill="${o.color}" stroke="var(--card)" stroke-width="2"/></g>
+      <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg><div class="tip" hidden></div></div>`;
+  }
+  const HEALTH_METRICS = [
+    { k: 'steps', title: 'Steps', color: '#ff6b35', kind: 'bar', head: v => Math.round(v).toLocaleString(), headSub: 'avg per day', fmt: v => Math.round(v).toLocaleString(), yFmt: v => v >= 1000 ? (v / 1000) + 'k' : v, total: true },
+    { k: 'kcal', title: 'Active calories', color: '#ff6b35', kind: 'bar', head: v => Math.round(v).toLocaleString(), headSub: 'kcal per day', fmt: v => Math.round(v) + ' kcal', yFmt: v => v },
+    { k: 'walk', title: 'Walking + running distance', color: '#ff6b35', kind: 'bar', head: v => fmtDist(v), unit: () => state.unit, headSub: 'per day', fmt: v => fmtDist(v) + ' ' + state.unit, yFmt: v => +(v / M_PER[state.unit]).toFixed(1), conv: true },
+    { k: 'exercise', title: 'Exercise minutes', color: '#ff6b35', kind: 'bar', head: v => Math.round(v), headSub: 'min per day', fmt: v => Math.round(v) + ' min', yFmt: v => v },
+    { k: 'flights', title: 'Flights climbed', color: '#ff6b35', kind: 'bar', head: v => Math.round(v), headSub: 'per day', fmt: v => Math.round(v) + ' flights', yFmt: v => v },
+    { k: 'rhr', title: 'Resting heart rate', color: '#ff5a5f', kind: 'line', head: v => Math.round(v), headSub: 'bpm average', fmt: v => Math.round(v) + ' bpm' },
+    { k: 'walkhr', title: 'Walking heart rate', color: '#ff5a5f', kind: 'line', head: v => Math.round(v), headSub: 'bpm average', fmt: v => Math.round(v) + ' bpm' },
+    { k: 'hrv', title: 'Heart rate variability', color: '#ff5a5f', kind: 'line', head: v => Math.round(v), headSub: 'ms average', fmt: v => Math.round(v) + ' ms' },
+    { k: 'spo2', title: 'Blood oxygen', color: '#ff5a5f', kind: 'line', head: v => v.toFixed(1) + '%', headSub: 'average', fmt: v => v.toFixed(1) + '%' },
+    { k: 'resp', title: 'Breathing rate', color: '#ff5a5f', kind: 'line', head: v => v.toFixed(1), headSub: 'breaths/min', fmt: v => v.toFixed(1) + ' /min' },
+    { k: 'vo2', title: 'VO₂ max', color: '#3ddc84', kind: 'line', head: v => v.toFixed(1), headSub: 'mL/kg/min', fmt: v => v.toFixed(1) },
+    { k: 'weight', title: 'Weight', color: '#3ddc84', kind: 'line', latest: true, head: v => state.unit === 'km' ? v.toFixed(1) : (v / 0.45359237).toFixed(1), unit: () => state.unit === 'km' ? 'kg' : 'lb', headSub: 'latest', fmt: v => state.unit === 'km' ? v.toFixed(1) + ' kg' : (v / 0.45359237).toFixed(1) + ' lb' }
+  ];
+  function bucketValue(keys, getter) {
+    const vals = keys.map(getter).filter(v => v != null && isFinite(v));
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }
+  function renderHealth() {
+    $('footer').hidden = true;
+    const Hd = state.health;
+    const keysAll = Hd ? [...Object.keys(Hd.days), ...Object.keys(Hd.sleep)].sort() : [];
+    if (!keysAll.length) {
+      $('content').innerHTML = `<div class="empty soon"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS.health}</svg>
+        <div class="big">No health data yet</div>Tap <b>Import data</b> and pick your Apple Health <b>export.zip</b>. Sleep, steps, heart rate and more are read from every app and device that saves to Apple Health, including your iPhone, not just the watch.</div>`;
+      return;
+    }
+    const oldest = keysAll[0];
+    const maxBack = periodMaxBack(state.period, new Date(oldest + 'T12:00:00').getTime());
+    state.periodOffset = Math.min(Math.max(0, state.periodOffset), maxBack);
+    const [label, sub] = state.period === 'all' ? ['All time', 'Since ' + new Date(oldest + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })] : periodLabels(state.period, state.periodOffset, []);
+    const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const seg = ['week', 'month', 'year', 'all'].map(k => `<button type="button" data-period="${k}" aria-pressed="${state.period === k}">${{ week: 'Week', month: 'Month', year: 'Year', all: 'All time' }[k]}</button>`).join('');
+    const navs = state.period !== 'all';
+    let html = `<div class="seg period" role="group" aria-label="Show health by">${seg}</div>
+      <div class="week slim" id="week">
+        ${navs ? `<button class="wnav" type="button" data-week="older" aria-label="Previous"${state.periodOffset >= maxBack ? ' disabled' : ''}>${arrow('M15 6l-6 6 6 6')}</button>` : ''}
+        <div class="wmid"><div class="wlabel">${label}</div><div class="wrange">${esc(sub)}</div></div>
+        ${navs ? `<button class="wnav" type="button" data-week="newer" aria-label="Next"${state.periodOffset === 0 ? ' disabled' : ''}>${arrow('M9 6l6 6-6 6')}</button>` : ''}
+      </div>`;
+    const buckets = healthBuckets(oldest);
+    const allKeys = buckets.flatMap(b => b.keys);
+    let cards = 0;
+
+    // Sleep
+    const sl = k => Hd.sleep[k];
+    const nights = allKeys.map(sl).filter(Boolean);
+    if (nights.length) {
+      const useAsleep = nights.some(n => n.asleep > 0);
+      const val = n => n ? (n.asleep || n.inBed) || null : null; // nights with only 'time in bed' still count
+      const sb = buckets.map(b => ({ ...b, v: b.future ? null : bucketValue(b.keys, k => val(sl(k)) && val(sl(k)) / 3600) }));
+      const avg = bucketValue(allKeys, k => val(sl(k)) && val(sl(k)) / 3600);
+      // average bedtime / wake time, measured from noon so midnight doesn't break the average
+      const fromNoon = t => { const d = new Date(t); let m = d.getHours() * 60 + d.getMinutes() - 720; if (m < 0) m += 1440; return m; };
+      const starts = nights.filter(n => n.start && n.asleep + n.inBed > 3 * 3600).map(n => fromNoon(n.start)), ends = nights.filter(n => n.end && n.asleep + n.inBed > 3 * 3600).map(n => fromNoon(n.end));
+      const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+      const st = { deep: 0, core: 0, rem: 0, awake: 0 };
+      nights.forEach(n => { st.deep += n.deep; st.core += n.core; st.rem += n.rem; st.awake += n.awake; });
+      const stTot = st.deep + st.core + st.rem + st.awake;
+      const STG = [['awake', 'Awake', '#d9d0ff'], ['rem', 'REM', '#a690ff'], ['core', 'Core', '#7d63e6'], ['deep', 'Deep', '#5e45c4']];
+      html += `<div class="hcard"><div class="hhead"><span>${useAsleep ? 'Sleep' : 'Time in bed'}</span><div><b>${avg ? fmtHM(avg * 3600) : '–'}</b><small>avg per night</small></div></div>
+        ${barChart('h-sleep', sb, { label: 'Sleep per night', color: '#8b72f0', avg, yFmt: v => v + 'h', tipFmt: v => fmtHM(v * 3600) })}
+        ${starts.length ? `<div class="hmeta"><span>Avg bedtime <b>${fmtClock(720 + mean(starts))}</b></span><span>Avg wake <b>${fmtClock(720 + mean(ends))}</b></span><span><b>${nights.length}</b> nights</span></div>` : ''}
+        ${stTot > 0 ? `<div class="stages">${STG.map(([k, , c]) => st[k] ? `<i style="width:${(st[k] / stTot * 100).toFixed(2)}%;background:${c}"></i>` : '').join('')}</div>
+          <div class="slegend">${STG.map(([k, n, c]) => `<span><i style="background:${c}"></i>${n} ${Math.round(st[k] / stTot * 100)}%</span>`).join('')}</div>` : ''}
+      </div>`;
+      cards++;
+    }
+
+    // Daily metrics
+    for (const m of HEALTH_METRICS) {
+      const get = k => Hd.days[k] && Hd.days[k][m.k] != null ? Hd.days[k][m.k] : null;
+      if (!allKeys.some(k => get(k) != null)) continue;
+      const mb = buckets.map(b => ({ ...b, v: b.future ? null : bucketValue(b.keys, get) }));
+      let headV;
+      if (m.latest) { const ks = allKeys.filter(k => get(k) != null); headV = get(ks[ks.length - 1]); }
+      else headV = bucketValue(allKeys, get);
+      const days = allKeys.filter(k => get(k) != null).length;
+      const total = m.total ? allKeys.reduce((s, k) => s + (get(k) || 0), 0) : 0;
+      let chart;
+      if (m.kind === 'bar') chart = barChart('h-' + m.k, mb, { label: m.title, color: m.color, avg: headV, yFmt: m.conv ? m.yFmt : m.yFmt, tipFmt: m.fmt });
+      else {
+        const pts = mb.map((b, i) => [i, b.v]).filter(p => p[1] != null);
+        chart = pts.length > 1 ? lineChart('h-' + m.k, pts, {
+          label: m.title, color: m.color, area: false,
+          yTicks: (lo, hi) => niceTicks(lo - (hi - lo || 2) * .25, hi + (hi - lo || 2) * .25, 3),
+          yFmt: v => m.k === 'weight' ? (state.unit === 'km' ? Math.round(v) : Math.round(v / 0.45359237)) : (+v.toFixed(1)),
+          xTicks: () => buckets.map((_, i) => i).filter(i => i % Math.ceil(buckets.length / 7) === 0), xFmt: i => esc(buckets[i] ? buckets[i].label : ''),
+          tip: p => `<b>${m.fmt(p[1])}</b><span>${esc(buckets[p[0]].tip)}</span>`
+        }) : `<div class="note">Only one reading in this ${state.period === 'all' ? 'range' : state.period}: ${m.fmt(pts[0][1])} on ${esc(buckets[pts[0][0]].tip)}.</div>`;
+      }
+      html += `<div class="hcard"><div class="hhead"><span>${m.title}</span><div><b>${m.head(headV)}${m.unit ? `<small class="u">${m.unit()}</small>` : ''}</b><small>${m.headSub}</small></div></div>
+        ${chart}<div class="hmeta"><span><b>${days}</b> day${days === 1 ? '' : 's'} with data</span>${m.total ? `<span>Total <b>${Math.round(total).toLocaleString()}</b></span>` : ''}</div></div>`;
+      cards++;
+    }
+    if (!cards) html += `<div class="note" style="margin:6px 2px">No health data in this ${state.period}.</div>`;
+    html += `<div class="note" style="margin:10px 2px 0">From Apple Health: every app and device that saves there, including your iPhone. Where two devices count the same thing (like steps), the higher daily total is used so nothing is counted twice. Import a new export.zip to update.</div>`;
+    $('content').innerHTML = html;
+    wireWeek();
+    wireCharts();
+  }
+
   const currentRunId = () => { const m = location.hash.match(/^#run-([a-z0-9]+)$/); return m ? m[1] : null; };
 
   function render() {
@@ -1576,9 +1808,10 @@
     let { sport, view } = routeFromHash();
     if (view === 'run' && !run) view = 'runs';
     document.body.classList.toggle('in-run', view === 'run');
-    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport !== 'run');
+    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim');
     renderNavs(sport, view);
     destroyMaps();
+    if (sport === 'health') { state.shownRun = null; return renderHealth(); }
     if (sport !== 'run') { state.shownRun = null; return renderOther(sport, view); }
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
@@ -1592,7 +1825,7 @@
     $('footer').hidden = !runs.length;
     if (!runs.length) {
       $('content').innerHTML = `<div class="empty"><div class="big">No runs yet</div>
-        Tap <b>Import run data</b> and choose your Health <b>export.zip</b>.<br>
+        Tap <b>Import data</b> and choose your Health <b>export.zip</b>.<br>
         <button class="ghost" id="sampleBtn" type="button">Preview with sample runs</button></div>`;
       $('sampleBtn').onclick = () => { sampleRuns().forEach(addRun); save(); render(); };
       return;
@@ -1914,11 +2147,12 @@
       const res = await importFiles(files);
       const saved = save();
       let t;
-      if (!res.found) t = res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
+      if (!res.found) t = res.healthDays ? 'No runs in that file.' : res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
       else t = `Found ${res.found} run${res.found === 1 ? '' : 's'}${res.routes ? ` (${res.routes} with routes)` : ''}. ${res.added} new${res.found - res.added ? `, ${res.found - res.added} already here` : ''}.`;
+      if (res.healthDays) t += ` Health data updated for ${res.healthDays.toLocaleString()} day${res.healthDays === 1 ? '' : 's'}.`;
       if (res.skipped.length) t += ` Skipped: ${res.skipped.map(esc).join(', ')}.`;
       if (!saved) t += ' Note: too much data to save on this device, so these will disappear when you close the page.';
-      showMsg(t, !res.found);
+      showMsg(t, !res.found && !res.healthDays);
     } catch (err) {
       showMsg(esc(err.message || 'Something went wrong reading that file.'), true);
     } finally {
