@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Run Log">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0e1013">
+<title>Run Log</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1013; --card:#171a1f; --card2:#1e2229; --line:#2a2f37;
+    --text:#eef0f3; --muted:#8a919c; --accent:#ff6b35; --accent2:#ffb38f; --go:#3ddc84;
+    --num:"Barlow Condensed", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+  h1{font:700 34px/1 var(--num);letter-spacing:.5px;margin:0;text-transform:uppercase}
+  h1 span{color:var(--accent)}
+  .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
+  .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:7px;font:600 13px Inter;color:var(--muted)}
+  .seg button[aria-pressed="true"]{background:var(--card2);color:var(--text)}
+
+  .import{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border:0;border-radius:14px;
+    background:var(--accent);color:#1a0d06;font:700 18px var(--num);letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+  .import:active{transform:scale(.99)}
+  .import:disabled{opacity:.6}
+  .import svg{width:20px;height:20px}
+  input[type=file]{display:none}
+
+  details.help{margin:10px 0 0;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  details.help summary{cursor:pointer;padding:12px 14px;color:var(--muted);font-size:13.5px;list-style:none}
+  details.help summary::-webkit-details-marker{display:none}
+  details.help summary::after{content:"+";float:right;color:var(--muted)}
+  details.help[open] summary::after{content:"–"}
+  details.help .body{padding:0 14px 14px;font-size:13.5px;color:#c9ced6}
+  details.help ol{margin:6px 0 10px;padding-left:20px}
+  details.help li{margin:4px 0}
+  details.help b{color:var(--text)}
+
+  .status{margin-top:12px;font-size:13px;color:var(--muted);min-height:0}
+  .bar{height:4px;background:var(--card2);border-radius:4px;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;background:var(--card);border:1px solid var(--line)}
+  .msg.err{border-color:#6b2a2a;background:#241414;color:#ffb4b4}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0 8px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 10px 8px}
+  .tile .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .tile .v{font:600 24px/1.1 var(--num);margin-top:2px;white-space:nowrap}
+  .tile .v small{font-size:13px;color:var(--muted);margin-left:2px}
+  @media (max-width:420px){.tiles{grid-template-columns:repeat(2,1fr)}}
+
+  h2{font:600 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:22px 2px 10px}
+  .run{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+  .run .top{display:flex;gap:12px;padding:14px;cursor:pointer;align-items:stretch}
+  .run .info{flex:1;min-width:0}
+  .run .when{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .badge{font-size:10.5px;padding:2px 6px;border-radius:5px;background:var(--card2);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .run .dist{font:700 36px/1 var(--num);margin:6px 0 8px}
+  .run .dist small{font-size:16px;color:var(--muted);margin-left:3px;font-weight:600}
+  .stats{display:flex;gap:16px}
+  .stat .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .stat .v{font:600 19px/1.15 var(--num)}
+  .thumb{width:86px;flex:none;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center}
+  .thumb svg{width:100%;height:100%}
+  .thumb .none{font-size:10.5px;color:var(--muted);text-align:center;padding:6px}
+  .detail{display:none;border-top:1px solid var(--line);padding:14px}
+  .run.open .detail{display:block}
+  .bigmap{background:var(--card2);border-radius:12px;overflow:hidden;aspect-ratio:4/3}
+  .bigmap svg{width:100%;height:100%;display:block}
+  .bigmap.leaflet-container{background:#1a1d22;font:11px Inter,system-ui,sans-serif}
+  .leaflet-control-attribution{background:rgba(14,16,19,.75)!important;color:#8a919c!important}
+  .leaflet-control-attribution a{color:#b8bec8!important}
+  .leaflet-bar a{background:#1e2229!important;color:#eef0f3!important;border-color:#2a2f37!important}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:8px 2px 12px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .grid .stat{background:var(--card2);border-radius:10px;padding:8px 10px}
+  .del{all:unset;cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:12px;display:inline-block}
+
+  .empty{margin-top:28px;text-align:center;color:var(--muted);padding:28px 16px;border:1px dashed var(--line);border-radius:14px}
+  .empty .big{font:600 22px var(--num);color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+  .ghost{all:unset;cursor:pointer;margin-top:14px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:13.5px}
+  footer{margin-top:28px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+  footer button{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline}
+  .confirm{display:none;gap:8px;align-items:center}
+  .confirm.show{display:flex}
+  .confirm button{all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;border:1px solid var(--line);color:var(--text);text-decoration:none}
+  .confirm button.danger{background:#5a1f1f;border-color:#5a1f1f}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Run<span>Log</span></h1>
+      <div class="sub">CMF Watch Pro 3 · via Apple Health</div>
+    </div>
+    <div class="seg" role="group" aria-label="Units">
+      <button data-unit="km" aria-pressed="true">km</button>
+      <button data-unit="mi" aria-pressed="false">mi</button>
+    </div>
+  </header>
+
+  <button class="import" id="importBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
+    Import run data
+  </button>
+  <input type="file" id="fileInput" multiple>
+
+  <details class="help">
+    <summary>How do I get my data out of the watch?</summary>
+    <div class="body">
+      <ol>
+        <li>In the <b>CMF Watch</b> app, make sure <b>Apple Health</b> sync is on and your runs have synced.</li>
+        <li>Open the <b>Health</b> app → tap your profile picture → <b>Export All Health Data</b> → <b>Export</b>.</li>
+        <li>When the share sheet appears, choose <b>Save to Files</b>.</li>
+        <li>Come back here, tap <b>Import run data</b>, and pick <b>export.zip</b>.</li>
+      </ol>
+      You can also import <b>.gpx</b> files (from Strava, for example), or the unzipped <b>export.xml</b> (no routes in that case). Everything is read on your phone; nothing is uploaded.
+    </div>
+  </details>
+
+  <div class="status" id="status" hidden><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
+  <div id="msg"></div>
+
+  <div id="content"></div>
+
+  <footer id="footer" hidden>
+    <span>Saved on this device only</span>
+    <span>
+      <button id="clearBtn" type="button">Clear all runs</button>
+      <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
+    </span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const KEY = 'runlog.v1', UNIT_KEY = 'runlog.unit';
+  const state = { runs: [], unit: 'km', open: new Set() };
+  const $ = id => document.getElementById(id);
+
+  /* ---------- storage ---------- */
+  function load() {
+    try { state.runs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { state.runs = []; }
+    try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state.runs)); return true; }
+    catch { return false; }
+  }
+
+  /* ---------- formatting ---------- */
+  const M_PER = { km: 1000, mi: 1609.344 };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDist = m => (m / M_PER[state.unit]).toFixed(2);
+  function fmtDur(s) {
+    if (!isFinite(s) || s <= 0) return '–';
+    s = Math.round(s);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`;
+  }
+  function fmtPace(sec, m) {
+    if (!sec || !m) return '–';
+    const p = sec / (m / M_PER[state.unit]);
+    if (!isFinite(p) || p > 3600) return '–';
+    const mm = Math.floor(p / 60), ss = Math.round(p % 60);
+    return ss === 60 ? `${mm + 1}:00` : `${mm}:${String(ss).padStart(2,'0')}`;
+  }
+  function fmtSpeed(sec, m) {
+    if (!sec || !m) return '–';
+    return ((m / M_PER[state.unit]) / (sec / 3600)).toFixed(1);
+  }
+  const speedUnit = () => state.unit === 'km' ? 'km/h' : 'mph';
+  function fmtDate(ms) {
+    const d = new Date(ms);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  /* ---------- geometry ---------- */
+  function haversine(a, b) {
+    const R = 6371008.8, toR = Math.PI / 180;
+    const dLat = (b[0] - a[0]) * toR, dLon = (b[1] - a[1]) * toR;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * toR) * Math.cos(b[0] * toR) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+  const pathLength = pts => { let d = 0; for (let i = 1; i < pts.length; i++) d += haversine(pts[i - 1], pts[i]); return d; };
+  function downsample(pts, max = 300) {
+    if (pts.length <= max) return pts.map(roundPt);
+    const out = [], step = (pts.length - 1) / (max - 1);
+    for (let i = 0; i < max; i++) out.push(roundPt(pts[Math.round(i * step)]));
+    return out;
+  }
+  const roundPt = p => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5];
+
+  function routeSvg(pts, w, h, opts = {}) {
+    const pad = opts.pad ?? 8, sw = opts.stroke ?? 2.5;
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    for (const [la, lo] of pts) { minLat = Math.min(minLat, la); maxLat = Math.max(maxLat, la); minLon = Math.min(minLon, lo); maxLon = Math.max(maxLon, lo); }
+    const k = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+    const spanX = Math.max((maxLon - minLon) * k, 1e-6), spanY = Math.max(maxLat - minLat, 1e-6);
+    const s = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+    const ox = (w - spanX * s) / 2, oy = (h - spanY * s) / 2;
+    const P = ([la, lo]) => [ox + (lo - minLon) * k * s, oy + (maxLat - la) * s];
+    const d = pts.map((p, i) => { const [x, y] = P(p); return (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }).join('');
+    const [sx, sy] = P(pts[0]), [ex, ey] = P(pts[pts.length - 1]);
+    let grid = '';
+    if (opts.grid) {
+      for (let x = 20; x < w; x += 20) grid += `<line x1="${x}" y1="0" x2="${x}" y2="${h}"/>`;
+      for (let y = 20; y < h; y += 20) grid += `<line x1="0" y1="${y}" x2="${w}" y2="${y}"/>`;
+      grid = `<g stroke="#262b33" stroke-width="1">${grid}</g>`;
+    }
+    const r = opts.marker ?? 3.5;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${grid}
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-opacity=".25" stroke-width="${sw * 3}" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${ex}" cy="${ey}" r="${r}" fill="var(--bg)" stroke="var(--accent2)" stroke-width="${r * .7}"/>
+      <circle cx="${sx}" cy="${sy}" r="${r}" fill="var(--go)" stroke="var(--bg)" stroke-width="1.2"/></svg>`;
+  }
+
+  /* ---------- zip reading (no library; uses the browser's built-in DecompressionStream) ---------- */
+  async function zipEntries(file) {
+    const tailSize = Math.min(file.size, 66000 + 22);
+    const tailOff = file.size - tailSize;
+    const tail = new DataView(await file.slice(tailOff).arrayBuffer());
+    let eocd = -1;
+    for (let i = tail.byteLength - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error('That file doesn’t look like a valid .zip.');
+    let count = tail.getUint16(eocd + 10, true), cdSize = tail.getUint32(eocd + 12, true), cdOff = tail.getUint32(eocd + 16, true);
+    if ((cdOff === 0xffffffff || count === 0xffff || cdSize === 0xffffffff) && eocd >= 20 && tail.getUint32(eocd - 20, true) === 0x07064b50) {
+      const z64Off = Number(tail.getBigUint64(eocd - 20 + 8, true));
+      const z = new DataView(await file.slice(z64Off, z64Off + 56).arrayBuffer());
+      count = Number(z.getBigUint64(32, true)); cdSize = Number(z.getBigUint64(40, true)); cdOff = Number(z.getBigUint64(48, true));
+    }
+    const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer());
+    const dec = new TextDecoder();
+    const out = [];
+    let p = 0;
+    while (p + 46 <= cd.byteLength && cd.getUint32(p, true) === 0x02014b50) {
+      const method = cd.getUint16(p + 10, true);
+      let csize = cd.getUint32(p + 20, true), usize = cd.getUint32(p + 24, true);
+      const nLen = cd.getUint16(p + 28, true), xLen = cd.getUint16(p + 30, true), cLen = cd.getUint16(p + 32, true);
+      let offset = cd.getUint32(p + 42, true);
+      const name = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nLen));
+      let x = p + 46 + nLen; const xEnd = x + xLen;
+      while (x + 4 <= xEnd) {
+        const id = cd.getUint16(x, true), sz = cd.getUint16(x + 2, true);
+        if (id === 1) {
+          let q = x + 4;
+          if (usize === 0xffffffff) { usize = Number(cd.getBigUint64(q, true)); q += 8; }
+          if (csize === 0xffffffff) { csize = Number(cd.getBigUint64(q, true)); q += 8; }
+          if (offset === 0xffffffff) { offset = Number(cd.getBigUint64(q, true)); q += 8; }
+        }
+        x += 4 + sz;
+      }
+      out.push({ name, method, csize, usize, offset });
+      p = xEnd + cLen;
+    }
+    return out;
+  }
+  async function entryStream(file, e) {
+    const h = new DataView(await file.slice(e.offset, e.offset + 30).arrayBuffer());
+    if (h.getUint32(0, true) !== 0x04034b50) throw new Error('The .zip seems damaged.');
+    const start = e.offset + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+    const s = file.slice(start, start + e.csize).stream();
+    if (e.method === 0) return s;
+    if (e.method === 8) {
+      if (typeof DecompressionStream === 'undefined') throw new Error('This browser can’t unzip files. Update iOS, or unzip export.zip in the Files app and import the .gpx / export.xml files instead.');
+      return s.pipeThrough(new DecompressionStream('deflate-raw'));
+    }
+    throw new Error('Unsupported compression in the .zip.');
+  }
+  const entryText = async (file, e) => new Response(await entryStream(file, e)).text();
+
+  /* ---------- Apple Health export.xml (streamed, so huge exports don't crash the phone) ---------- */
+  const unesc = s => s.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi, (m, g) =>
+    g[0] === '#' ? String.fromCodePoint(g[1].toLowerCase() === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10))
+      : ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" })[g.toLowerCase()]);
+  function attrs(tag) { const o = {}; tag.replace(/([\w:]+)="([^"]*)"/g, (_, k, v) => { o[k] = unesc(v); }); return o; }
+  function parseHealthDate(s) {
+    if (!s) return NaN;
+    const m = s.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-])(\d{2})(\d{2})$/);
+    return m ? Date.parse(`${m[1]}T${m[2]}${m[3]}${m[4]}:${m[5]}`) : Date.parse(s);
+  }
+  function toMeters(v, unit) {
+    v = parseFloat(v); if (!isFinite(v)) return 0;
+    return v * ({ km: 1000, mi: 1609.344, m: 1, cm: .01, yd: .9144, ft: .3048 }[unit] ?? 1);
+  }
+  function toSeconds(v, unit) {
+    v = parseFloat(v); if (!isFinite(v)) return 0;
+    return v * ({ min: 60, s: 1, sec: 1, hr: 3600, h: 3600, ms: .001 }[unit] ?? 60);
+  }
+
+  function parseWorkout(str) {
+    const head = str.slice(0, str.indexOf('>') + 1);
+    const a = attrs(head);
+    if (a.workoutActivityType !== 'HKWorkoutActivityTypeRunning') return null;
+    const start = parseHealthDate(a.startDate), end = parseHealthDate(a.endDate);
+    let duration = toSeconds(a.duration, a.durationUnit) || (end - start) / 1000;
+    let distance = a.totalDistance ? toMeters(a.totalDistance, a.totalDistanceUnit) : 0;
+    let kcal = a.totalEnergyBurned ? parseFloat(a.totalEnergyBurned) * (a.totalEnergyBurnedUnit === 'kJ' ? 0.239006 : 1) : 0;
+    let hr = 0;
+    for (const m of str.matchAll(/<WorkoutStatistics\b[^>]*>/g)) {
+      const s = attrs(m[0]);
+      if (/DistanceWalkingRunning$/.test(s.type) && !distance) distance = toMeters(s.sum, s.unit);
+      else if (/ActiveEnergyBurned$/.test(s.type) && !kcal) kcal = parseFloat(s.sum) * (s.unit === 'kJ' ? 0.239006 : 1);
+      else if (/HeartRate$/.test(s.type)) hr = parseFloat(s.average) || 0;
+    }
+    const ref = str.match(/<FileReference\s+path="([^"]+)"/);
+    return {
+      start, duration, distance, kcal: Math.round(kcal) || 0, hr: Math.round(hr) || 0,
+      source: a.sourceName || 'Apple Health',
+      indoor: /key="HKIndoorWorkout"\s+value="1"/.test(str),
+      routePath: ref ? unesc(ref[1]) : null, route: null
+    };
+  }
+
+  async function scanHealthXml(byteStream, totalBytes, onProgress) {
+    const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = '', seen = 0, others = 0, lastTick = 0;
+    const runs = [];
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value) { buf += value; seen += value.length; }
+      let pos = 0;
+      for (;;) {
+        const s = buf.indexOf('<Workout ', pos);
+        if (s < 0) { pos = Math.max(pos, buf.length - 12); break; }
+        const gt = buf.indexOf('>', s);
+        if (gt < 0) { pos = s; break; }
+        let end;
+        if (buf[gt - 1] === '/') end = gt + 1;
+        else { const c = buf.indexOf('</Workout>', gt); if (c < 0) { pos = s; break; } end = c + 10; }
+        const w = parseWorkout(buf.slice(s, end));
+        if (w) runs.push(w); else others++;
+        pos = end;
+      }
+      buf = buf.slice(pos);
+      const now = performance.now();
+      if (onProgress && totalBytes && now - lastTick > 120) { lastTick = now; onProgress(Math.min(.99, seen / totalBytes)); }
+      if (done) break;
+    }
+    return { runs, others };
+  }
+
+  /* ---------- GPX ---------- */
+  function parseGpx(text) {
+    const pts = [], times = [];
+    for (const m of text.matchAll(/<trkpt\b([^>]*?)(?:\/>|>([\s\S]*?)<\/trkpt>)/g)) {
+      const a = attrs(m[1]); const la = parseFloat(a.lat), lo = parseFloat(a.lon);
+      if (!isFinite(la) || !isFinite(lo)) continue;
+      pts.push([la, lo]);
+      const t = m[2] && m[2].match(/<time>([^<]+)<\/time>/);
+      times.push(t ? Date.parse(t[1]) : NaN);
+    }
+    const nm = text.match(/<trk>[\s\S]*?<name>([^<]*)<\/name>/) || text.match(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/);
+    const t0 = times.find(isFinite), t1 = [...times].reverse().find(isFinite);
+    return { pts, start: t0, end: t1, name: nm ? unesc(nm[1]).trim() : '' };
+  }
+  function runFromGpx(g, source) {
+    if (g.pts.length < 2) return null;
+    const distance = pathLength(g.pts);
+    return {
+      start: isFinite(g.start) ? g.start : Date.now(),
+      duration: isFinite(g.start) && isFinite(g.end) ? (g.end - g.start) / 1000 : 0,
+      distance, kcal: 0, hr: 0, source: g.name || source, indoor: false, route: downsample(g.pts)
+    };
+  }
+
+  /* ---------- adding runs ---------- */
+  function addRun(r) {
+    if (!isFinite(r.start)) return false;
+    const key = Math.round(r.start / 60000);
+    const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000);
+    if (existing) {
+      if (!existing.route && r.route) existing.route = r.route;
+      for (const f of ['distance', 'duration', 'kcal', 'hr']) if (!existing[f] && r[f]) existing[f] = r[f];
+      return false;
+    }
+    delete r.routePath;
+    r.id = key.toString(36);
+    state.runs.push(r);
+    return true;
+  }
+
+  async function importZip(file) {
+    const entries = await zipEntries(file);
+    const xml = entries.find(e => /(^|\/)export\.xml$/i.test(e.name));
+    if (xml) {
+      setStatus('Scanning your health data…', 0);
+      const { runs, others } = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
+      const withRoutes = runs.filter(r => r.routePath);
+      let i = 0;
+      for (const r of withRoutes) {
+        i++;
+        setStatus(`Loading routes… ${i} of ${withRoutes.length}`, .8 + .2 * (i / withRoutes.length));
+        const entry = entries.find(e => e.name.endsWith(r.routePath));
+        if (!entry) continue;
+        try {
+          const g = parseGpx(await entryText(file, entry));
+          if (g.pts.length > 1) {
+            r.route = downsample(g.pts);
+            if (!r.distance) r.distance = pathLength(g.pts);
+          }
+        } catch {}
+      }
+      let added = 0;
+      for (const r of runs) if (addRun(r)) added++;
+      return { added, found: runs.length, others, routes: runs.filter(r => r.route).length };
+    }
+    const gpx = entries.filter(e => /\.gpx$/i.test(e.name) && !/(^|\/)\._/.test(e.name));
+    if (!gpx.length) throw new Error('No export.xml or .gpx files were found inside that .zip.');
+    let added = 0, found = 0;
+    for (const [i, e] of gpx.entries()) {
+      setStatus(`Reading routes… ${i + 1} of ${gpx.length}`, (i + 1) / gpx.length);
+      const r = runFromGpx(parseGpx(await entryText(file, e)), e.name.split('/').pop());
+      if (r) { found++; if (addRun(r)) added++; }
+    }
+    return { added, found, others: 0, routes: found };
+  }
+
+  async function importFiles(files) {
+    const totals = { added: 0, found: 0, others: 0, routes: 0 }, skipped = [];
+    for (const f of files) {
+      const n = f.name.toLowerCase();
+      let res = null;
+      if (n.endsWith('.zip')) res = await importZip(f);
+      else if (n.endsWith('.xml')) {
+        setStatus('Scanning your health data…', 0);
+        const { runs, others } = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
+        let added = 0; for (const r of runs) if (addRun(r)) added++;
+        res = { added, found: runs.length, others, routes: 0 };
+      } else if (n.endsWith('.gpx')) {
+        const r = runFromGpx(parseGpx(await f.text()), f.name);
+        res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: 1 } : { added: 0, found: 0, others: 0, routes: 0 };
+      } else skipped.push(f.name);
+      if (res) for (const k in totals) totals[k] += res[k];
+    }
+    return { ...totals, skipped };
+  }
+
+  /* ---------- sample data ---------- */
+  function sampleRuns() {
+    const out = [], now = Date.now();
+    const base = [43.0096, -81.2737];
+    const specs = [[5.1, 312, 1], [3.2, 298, 2], [8.0, 335, 4], [5.0, 305, 6], [10.2, 345, 9]];
+    specs.forEach(([km, pace, daysAgo], j) => {
+      const n = 160, pts = [], R = km / (2 * Math.PI) / 111, c = [base[0] + (j - 2) * .004, base[1] + (j % 3 - 1) * .006];
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        const wob = 1 + .22 * Math.sin(3 * t + j) + .08 * Math.sin(7 * t);
+        pts.push([c[0] + R * wob * Math.sin(t) * .8, c[1] + R * wob * Math.cos(t) * 1.25 / Math.cos(c[0] * Math.PI / 180)]);
+      }
+      const distance = pathLength(pts);
+      out.push({ start: now - daysAgo * 86400000 - 3600000 * (j % 3), duration: distance / 1000 * pace, distance,
+        kcal: Math.round(distance / 1000 * 68), hr: 148 + j * 3, source: 'Sample', indoor: false, route: downsample(pts) });
+    });
+    return out;
+  }
+
+  /* ---------- UI ---------- */
+  function setStatus(text, p) {
+    $('status').hidden = false; $('statusText').textContent = text;
+    $('barFill').style.width = Math.round((p ?? 0) * 100) + '%';
+  }
+  const clearStatus = () => { $('status').hidden = true; };
+  function showMsg(text, err) { $('msg').innerHTML = text ? `<div class="msg${err ? ' err' : ''}">${text}</div>` : ''; }
+
+  function render() {
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.unit === state.unit));
+    const runs = [...state.runs].sort((a, b) => b.start - a.start);
+    $('footer').hidden = !runs.length;
+    if (!runs.length) {
+      $('content').innerHTML = `<div class="empty"><div class="big">No runs yet</div>
+        Tap <b>Import run data</b> and choose your Health <b>export.zip</b>.<br>
+        <button class="ghost" id="sampleBtn" type="button">Preview with sample runs</button></div>`;
+      $('sampleBtn').onclick = () => { sampleRuns().forEach(addRun); save(); render(); };
+      return;
+    }
+    const U = state.unit;
+    const totDist = runs.reduce((s, r) => s + (r.distance || 0), 0);
+    const timed = runs.filter(r => r.distance && r.duration);
+    const totTime = runs.reduce((s, r) => s + (r.duration || 0), 0);
+    const paceSec = timed.reduce((s, r) => s + r.duration, 0), paceDist = timed.reduce((s, r) => s + r.distance, 0);
+    let html = `<div class="tiles">
+      <div class="tile"><div class="k">Runs</div><div class="v">${runs.length}</div></div>
+      <div class="tile"><div class="k">Distance</div><div class="v">${fmtDist(totDist)}<small>${U}</small></div></div>
+      <div class="tile"><div class="k">Time</div><div class="v">${fmtDur(totTime)}</div></div>
+      <div class="tile"><div class="k">Avg pace</div><div class="v">${fmtPace(paceSec, paceDist)}<small>/${U}</small></div></div>
+    </div><h2>All runs</h2>`;
+    for (const r of runs) {
+      const open = state.open.has(r.id);
+      const badge = r.indoor ? '<span class="badge">Treadmill</span>' : (r.source === 'Sample' ? '<span class="badge">Sample</span>' : '');
+      html += `<div class="run${open ? ' open' : ''}" data-id="${r.id}">
+        <div class="top" role="button" tabindex="0" aria-expanded="${open}">
+          <div class="info">
+            <div class="when">${esc(fmtDate(r.start))} ${badge}</div>
+            <div class="dist">${r.distance ? fmtDist(r.distance) : '–'}<small>${U}</small></div>
+            <div class="stats">
+              <div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div>
+              <div class="stat"><div class="k">Pace /${U}</div><div class="v">${fmtPace(r.duration, r.distance)}</div></div>
+              <div class="stat"><div class="k">${speedUnit()}</div><div class="v">${fmtSpeed(r.duration, r.distance)}</div></div>
+            </div>
+          </div>
+          <div class="thumb">${r.route && r.route.length > 1 ? routeSvg(r.route, 86, 86, { pad: 9, stroke: 2, marker: 3 }) : `<div class="none">${r.indoor ? 'Indoor run' : 'No route'}</div>`}</div>
+        </div>
+        <div class="detail">${open ? detailHtml(r) : ''}</div>
+      </div>`;
+    }
+    destroyMaps();
+    $('content').innerHTML = html;
+    initMaps();
+  }
+
+  /* ---------- real street maps (Leaflet + OpenStreetMap data, CARTO dark tiles) ---------- */
+  const liveMaps = [];
+  function destroyMaps() { while (liveMaps.length) { try { liveMaps.pop().remove(); } catch {} } }
+  function initMaps() {
+    if (typeof L === 'undefined') return; // no internet / blocked: keep the drawn route shape
+    document.querySelectorAll('.bigmap[data-map]').forEach(el => {
+      const r = state.runs.find(x => x.id === el.dataset.map);
+      if (!r || !r.route || r.route.length < 2) return;
+      el.innerHTML = '';
+      const map = L.map(el, {
+        zoomControl: true, attributionControl: true, scrollWheelZoom: false,
+        dragging: true, touchZoom: true, tap: false
+      });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19, subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }).addTo(map);
+      L.polyline(r.route, { color: '#ff6b35', weight: 10, opacity: .25, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+      const line = L.polyline(r.route, { color: '#ff6b35', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+      L.circleMarker(r.route[r.route.length - 1], { radius: 6, color: '#ffb38f', weight: 3, fillColor: '#0e1013', fillOpacity: 1 }).addTo(map);
+      L.circleMarker(r.route[0], { radius: 6, color: '#0e1013', weight: 2, fillColor: '#3ddc84', fillOpacity: 1 }).addTo(map);
+      map.fitBounds(line.getBounds(), { padding: [24, 24] });
+      liveMaps.push(map);
+    });
+  }
+
+  function detailHtml(r) {
+    const U = state.unit;
+    const map = r.route && r.route.length > 1
+      ? `<div class="bigmap" data-map="${r.id}">${routeSvg(r.route, 400, 300, { pad: 22, stroke: 3, grid: true, marker: 5.5 })}</div>
+         <div class="legend"><span><i style="background:var(--go)"></i>Start</span><span><i style="border:2px solid var(--accent2);width:7px;height:7px"></i>Finish</span><span>${typeof L !== 'undefined' ? 'Drag and pinch to explore' : 'Map needs internet'}</span></div>`
+      : '';
+    return `${map}<div class="grid">
+      <div class="stat"><div class="k">Distance</div><div class="v">${r.distance ? fmtDist(r.distance) + ' ' + U : '–'}</div></div>
+      <div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div>
+      <div class="stat"><div class="k">Avg pace</div><div class="v">${fmtPace(r.duration, r.distance)} /${U}</div></div>
+      <div class="stat"><div class="k">Avg speed</div><div class="v">${fmtSpeed(r.duration, r.distance)} ${speedUnit()}</div></div>
+      <div class="stat"><div class="k">Avg HR</div><div class="v">${r.hr ? r.hr + ' bpm' : '–'}</div></div>
+      <div class="stat"><div class="k">Calories</div><div class="v">${r.kcal ? r.kcal + ' kcal' : '–'}</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:var(--muted)">Source: ${esc(r.source)}</span>
+      <button class="del" data-del="${r.id}" type="button">Remove this run</button>
+    </div>`;
+  }
+
+  /* ---------- events ---------- */
+  $('importBtn').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    $('importBtn').disabled = true; showMsg('');
+    try {
+      const res = await importFiles(files);
+      const saved = save();
+      let t;
+      if (!res.found) t = res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
+      else t = `Found ${res.found} run${res.found === 1 ? '' : 's'}${res.routes ? ` (${res.routes} with routes)` : ''}. ${res.added} new${res.found - res.added ? `, ${res.found - res.added} already here` : ''}.`;
+      if (res.skipped.length) t += ` Skipped: ${res.skipped.map(esc).join(', ')}.`;
+      if (!saved) t += ' Note: too much data to save on this device, so these will disappear when you close the page.';
+      showMsg(t, !res.found);
+    } catch (err) {
+      showMsg(esc(err.message || 'Something went wrong reading that file.'), true);
+    } finally {
+      $('importBtn').disabled = false; clearStatus(); render();
+    }
+  };
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    state.unit = b.dataset.unit; try { localStorage.setItem(UNIT_KEY, state.unit); } catch {} render();
+  });
+  $('content').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (del) { state.runs = state.runs.filter(r => r.id !== del.dataset.del); state.open.delete(del.dataset.del); save(); render(); return; }
+    const top = e.target.closest('.top'); if (!top) return;
+    const id = top.parentElement.dataset.id;
+    state.open.has(id) ? state.open.delete(id) : state.open.add(id);
+    render();
+  });
+  $('content').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('top')) { e.preventDefault(); e.target.click(); } });
+  $('clearBtn').onclick = () => { $('clearBtn').hidden = true; $('confirm').classList.add('show'); };
+  $('noClear').onclick = () => { $('clearBtn').hidden = false; $('confirm').classList.remove('show'); };
+  $('yesClear').onclick = () => { state.runs = []; state.open.clear(); save(); $('noClear').onclick(); showMsg(''); render(); };
+
+  load(); render();
+})();
+</script>
+</body>
+</html>
