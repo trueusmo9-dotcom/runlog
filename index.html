@@ -232,6 +232,21 @@
   .lv-rest-set{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);margin:0 2px 10px}
   .lv-rest-set select{padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:15px Inter}
   .wide-btn.danger{background:#5a1f1f;border-color:#5a1f1f;color:#fff}
+  .cal-d.sport .cw{display:flex;align-items:center;justify-content:center;gap:2px}
+  .cal-d.k-run{background:#2a1a12;border-color:#5a3220}.cal-d.k-run .cw{color:#ffb38f}
+  .cal-d.k-bike{background:#10222b;border-color:#1f4656}.cal-d.k-bike .cw{color:#7fd3f0}
+  .cal-d.k-swim{background:#121b33;border-color:#273a6b}.cal-d.k-swim .cw{color:#9db4ff}
+  .kindh{display:flex !important;align-items:center;gap:6px}
+  .kindh.k-run{color:#ffb38f}.kindh.k-bike{color:#7fd3f0}.kindh.k-swim{color:#9db4ff}
+  .dlink.donerun{margin:4px 14px 10px;background:#12291c;border-color:#1f4d33;color:var(--go);gap:10px}
+  .dlink.donerun span{font-weight:600}
+  .dlink.donerun small{display:block;font:400 12px Inter;color:var(--muted);margin-top:1px}
+  .dlink.donerun b{text-align:right;color:var(--text)}
+  .kchip.k-rest svg{color:var(--muted)}
+  .kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .kchip{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0;border-radius:10px;background:var(--card);border:1px solid var(--line);font:600 12.5px Inter;color:var(--muted)}
+  .kchip.on{border-color:var(--accent);color:var(--text)}
+  .kchip.k-run svg{color:#ffb38f}.kchip.k-bike svg{color:#7fd3f0}.kchip.k-swim svg{color:#9db4ff}
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0 12px}
   .cal-h{text-align:center;font:600 11px Inter;color:var(--muted);padding:2px 0 4px}
   .cal-d{all:unset;cursor:pointer;box-sizing:border-box;min-height:58px;padding:5px 3px 4px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;-webkit-tap-highlight-color:transparent}
@@ -475,7 +490,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v25<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v26<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2152,6 +2167,9 @@
   const presetById = id => wo.presets.find(p => p.id === id);
   const weekKey = off => dayKey(new Date(addWeeks(weekStart(Date.now()), off)));
 
+  const DAY_KINDS = { run: { label: 'Run', icon: 'run' }, bike: { label: 'Bike', icon: 'bike' }, swim: { label: 'Swim', icon: 'swim' }, rest: { label: 'Rest day', short: 'Rest' } };
+  const kindIcon = (k, s = 13) => !DAY_KINDS[k] ? '' : `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${k === 'rest' ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>' : ICONS[DAY_KINDS[k].icon]}</svg>`;
+  const runsOn = k => state.runs.filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   function renderWorkout(view) {
     $('footer').hidden = true;
     if (view === 'presets') return renderPresets();
@@ -2162,37 +2180,42 @@
     const todayK = dayKey(now), lead = (m0.getDay() + 6) % 7; // Monday-first grid
     const monthKeys = Array.from({ length: daysIn }, (_, i) => dayKey(new Date(m0.getFullYear(), m0.getMonth(), i + 1)));
     if (!state.woDay || !monthKeys.includes(state.woDay)) state.woDay = monthKeys.includes(todayK) ? todayK : monthKeys[0];
-    const planned = monthKeys.filter(k => wo.days[k] && wo.days[k] !== 'rest' && presetById(wo.days[k])).length;
+    const planned = monthKeys.filter(k => wo.days[k] && (presetById(wo.days[k]) || (DAY_KINDS[wo.days[k]] && wo.days[k] !== 'rest'))).length;
     const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
     let html = startBtnHtml() + `<div class="week slim" id="woMonthNav">
         <button class="wnav" type="button" id="mPrev" aria-label="Previous month">${arrow('M15 6l-6 6 6 6')}</button>
-        <div class="wmid"><div class="wlabel">${esc(m0.toLocaleDateString(undefined, { month: 'long' }))}</div><div class="wrange">${m0.getFullYear()} · ${planned} workout${planned === 1 ? '' : 's'} planned</div></div>
+        <div class="wmid"><div class="wlabel">${esc(m0.toLocaleDateString(undefined, { month: 'long' }))}</div><div class="wrange">${m0.getFullYear()} · ${planned} session${planned === 1 ? '' : 's'} planned</div></div>
         <button class="wnav" type="button" id="mNext" aria-label="Next month">${arrow('M9 6l6 6-6 6')}</button>
       </div>
       <div class="cal" role="grid" aria-label="Workout calendar">
         ${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => `<div class="cal-h">${d}</div>`).join('')}
         ${'<div class="cal-blank"></div>'.repeat(lead)}
         ${monthKeys.map((k, i) => {
-          const x = wo.days[k], p = x && x !== 'rest' ? presetById(x) : null;
-          const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
-          return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : x === 'rest' ? ': rest day' : ''}">
-            <span class="cn">${i + 1}${doneOn(k).length ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : x === 'rest' ? '<span class="cw">Rest</span>' : ''}</button>`;
+          const x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x];
+          const did = doneOn(k).length || (x === 'run' && runsOn(k).length);
+          const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', kd && x !== 'rest' ? 'sport k-' + x : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
+          return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : kd ? ': ' + kd.label : ''}">
+            <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}</button>`;
         }).join('')}
       </div>`;
     // selected day
-    const k = state.woDay, x = wo.days[k], p = x && x !== 'rest' ? presetById(x) : null, dd = new Date(k + 'T12:00:00');
+    const k = state.woDay, x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x], dd = new Date(k + 'T12:00:00');
     html += `<div class="daypanel">
       <div class="dp-h"><b>${esc(dd.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</b>${k === todayK ? '<span class="badge">Today</span>' : ''}</div>
       ${doneOn(k).map(l => { const exd = l.ex.filter(e => e.sets.some(x => x.done)); return `<div class="donebox"><b>✓ Completed: ${esc(l.name)}</b><small>${fmtDur((l.end - l.start) / 1000)} · ${exd.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0)} sets · ${exd.length} exercise${exd.length === 1 ? '' : 's'}</small>
         <div class="dex">${exd.map(e => `<div class="exl">${esc(e.name)} <span>${e.sets.filter(x => x.done).map(x => (x.w !== '' && x.w != null ? fmtWeight({ w: x.w, wu: x.wu }).replace(' ' + wUnit(), '') + '×' : '') + (x.reps || '–')).join(', ')}</span></div>`).join('')}</div></div>`; }).join('')}
       ${p && k === todayK && !state.live ? `<div style="padding:0 14px"><button type="button" class="wide-btn primary" data-start="${p.id}">Start ${esc(p.name)}</button></div>` : ''}
       ${p ? `<div class="dp-wo"><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small></div><div class="dex">${presetBody(p, 'd' + k)}</div>`
-          : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>` : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick a workout below.</div>`}
+          : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>`
+          : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : `<small>${kd.label} tracking is coming soon.</small>`}</div>
+              ${x === 'run' ? runsOn(k).map(r => `<a class="dlink donerun" href="#run-${r.id}" data-id="${r.id}"><span>✓ Completed run<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${fmtDist(r.distance)} ${state.unit}<small>${fmtDur(r.duration)}</small></b></a>`).join('') : ''}`
+          : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick something below.</div>`}
       <div class="picker">
-        <div class="pk-h">${p || x === 'rest' ? 'Change to' : 'Add a workout'}</div>
+        <div class="pk-h">${p || kd ? 'Change to' : 'Plan this day'}</div>
+        <div class="kinds">${['run', 'bike', 'swim', 'rest'].map(t => `<button type="button" class="kchip k-${t}${x === t ? ' on' : ''}" data-set="${t}">${kindIcon(t, 16)}<span>${DAY_KINDS[t].short || DAY_KINDS[t].label}</span></button>`).join('')}</div>
+        <div class="pk-h" style="margin-top:10px">Gym workouts</div>
         ${wo.presets.length ? [...wo.presets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(pr => `<button type="button" class="pk${pr.id === x ? ' on' : ''}" data-set="${pr.id}"><b>${esc(pr.name)}</b><small>${pr.ex.length} exercise${pr.ex.length === 1 ? '' : 's'}${pr.rest ? ' · rest ' + fmtRest(pr.rest) : ''}</small></button>`).join('')
           : `<div class="note" style="margin:0 0 8px">You don’t have any workouts yet. Make one with <b>+ New workout</b>.</div>`}
-        <button type="button" class="pk${x === 'rest' ? ' on' : ''}" data-set="rest"><b>Rest day</b></button>
         <div class="pk-row"><button type="button" class="linkbtn" id="pkNew">+ New workout</button>${x ? `<button type="button" class="linkbtn danger-t" data-set="">Clear day</button>` : ''}</div>
       </div></div>`;
     $('content').innerHTML = html;
