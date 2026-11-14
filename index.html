@@ -105,6 +105,7 @@
   .wk{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:4px}
   body.in-run .import, body.in-run details.help, body.in-run #msg, body.in-run #status, body.in-run footer{display:none!important}
   .runpage{padding-top:4px}
+  .rname{font:600 20px Inter;margin-bottom:2px}
   .back{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:2px;color:var(--accent);font-weight:600;font-size:15px;padding:6px 8px 6px 0;margin-bottom:10px}
   .runpage .when{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .dist.big{font:700 52px/1 var(--num);margin:6px 0 16px}
@@ -190,15 +191,19 @@
   <input type="file" id="fileInput" multiple>
 
   <details class="help">
-    <summary>How do I get my data out of the watch?</summary>
+    <summary>How do I get my run data?</summary>
     <div class="body">
+      <b>From Apple Health</b>
       <ol>
-        <li>In the <b>CMF Watch</b> app, make sure <b>Apple Health</b> sync is on and your runs have synced.</li>
         <li>Open the <b>Health</b> app → tap your profile picture → <b>Export All Health Data</b> → <b>Export</b>.</li>
-        <li>When the share sheet appears, choose <b>Save to Files</b>.</li>
-        <li>Come back here, tap <b>Import run data</b>, and pick <b>export.zip</b>.</li>
+        <li>Choose <b>Save to Files</b>, then tap <b>Import run data</b> here and pick <b>export.zip</b>.</li>
       </ol>
-      You can also import <b>.gpx</b> files (from Strava, for example), or the unzipped <b>export.xml</b> (no routes in that case). Everything is read on your phone; nothing is uploaded.
+      <b>From Strava</b> (on strava.com in Safari, not the Strava app)
+      <ol>
+        <li><b>One run:</b> open the activity → <b>⋯</b> menu → <b>Export GPX</b> or <b>Export Original</b>. Import the downloaded file here.</li>
+        <li><b>Everything:</b> profile picture → <b>Settings</b> → <b>My Account</b> → <b>Download or Delete Your Account</b> → <b>Request Your Archive</b>. Strava emails you a link; download the zip and import it here. Only runs are taken from it.</li>
+      </ol>
+      Runs found in both Health and Strava are merged, not doubled. Everything is read on your phone; nothing is uploaded.
     </div>
   </details>
 
@@ -208,7 +213,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v10</span>
+    <span>Saved on this device only · v11</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -491,17 +496,20 @@
 
   /* ---------- GPX ---------- */
   function parseGpx(text) {
-    const pts = [], times = [];
+    const pts = [], times = [], hrs = [], cads = [];
     for (const m of text.matchAll(/<trkpt\b([^>]*?)(?:\/>|>([\s\S]*?)<\/trkpt>)/g)) {
       const a = attrs(m[1]); const la = parseFloat(a.lat), lo = parseFloat(a.lon);
       if (!isFinite(la) || !isFinite(lo)) continue;
       pts.push(fixPt([la, lo]));
       const t = m[2] && m[2].match(/<time>([^<]+)<\/time>/);
       times.push(t ? Date.parse(t[1]) : NaN);
+      const hr = m[2] && m[2].match(/<(?:\w+:)?hr>\s*([\d.]+)/), cd = m[2] && m[2].match(/<(?:\w+:)?cad>\s*([\d.]+)/);
+      hrs.push(hr ? +hr[1] : null); cads.push(cd ? +cd[1] : null);
     }
+    const ty = text.match(/<trk>[\s\S]*?<type>([^<]*)<\/type>/);
     const nm = text.match(/<trk>[\s\S]*?<name>([^<]*)<\/name>/) || text.match(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/);
     const t0 = times.find(isFinite), t1 = [...times].reverse().find(isFinite);
-    return { pts, times, start: t0, end: t1, name: nm ? unesc(nm[1]).trim() : '' };
+    return { pts, times, hrs, cads, type: ty ? ty[1].trim() : '', start: t0, end: t1, name: nm ? unesc(nm[1]).trim() : '' };
   }
   /* ---------- run analysis: distance/time profile, heart rate, cadence ---------- */
   function thin(arr, max) {
@@ -551,16 +559,185 @@
     }
   }
   const runSpeed = r => r.speedAvg || (r.distance && r.duration ? r.distance / r.duration : 0);
-  const cadenceOf = r => (r.stride > 0.3 && r.stride < 3 && runSpeed(r)) ? Math.round(runSpeed(r) / r.stride * 60) : 0;
+  const cadenceOf = r => r.cadenceSpm || ((r.stride > 0.3 && r.stride < 3 && runSpeed(r)) ? Math.round(runSpeed(r) / r.stride * 60) : 0);
 
-  function runFromGpx(g, source) {
-    if (g.pts.length < 2) return null;
-    const distance = pathLength(g.pts);
-    const start = isFinite(g.start) ? g.start : Date.now(), end = isFinite(g.end) ? g.end : start;
-    return {
-      start, end, duration: (end - start) / 1000,
-      distance, kcal: 0, hr: 0, source: g.name || source, indoor: false, ...analyzeRoute(g, start, end, 0)
+  /* ---------- Strava & other activity files: GPX, TCX, FIT (optionally .gz) ---------- */
+  function tag1(s, name) { const m = s.match(new RegExp('<(?:\\w+:)?' + name + '>\\s*([^<]+)<')); return m ? m[1].trim() : null; }
+  function parseTcx(text) {
+    const sport = (text.match(/<Activity\s+Sport="([^"]+)"/) || [])[1] || '';
+    let duration = 0, distance = 0, kcal = 0;
+    for (const lap of text.matchAll(/<Lap\b[\s\S]*?<\/Lap>/g)) {
+      const head = lap[0].split(/<Track>/)[0];
+      duration += +(tag1(head, 'TotalTimeSeconds') || 0); distance += +(tag1(head, 'DistanceMeters') || 0); kcal += +(tag1(head, 'Calories') || 0);
+    }
+    const pts = [], times = [], S = { t: [], hr: [], cad: [], dist: [] };
+    for (const m of text.matchAll(/<Trackpoint>([\s\S]*?)<\/Trackpoint>/g)) {
+      const b = m[1], t = Date.parse(tag1(b, 'Time') || '');
+      const la = parseFloat(tag1(b, 'LatitudeDegrees')), lo = parseFloat(tag1(b, 'LongitudeDegrees'));
+      if (isFinite(la) && isFinite(lo)) { pts.push(fixPt([la, lo])); times.push(t); }
+      const hr = b.match(/<HeartRateBpm[^>]*>\s*<Value>\s*([\d.]+)/), cad = tag1(b, 'RunCadence') || tag1(b, 'Cadence'), d = tag1(b, 'DistanceMeters');
+      S.t.push(t); S.hr.push(hr ? +hr[1] : null); S.cad.push(cad != null ? +cad : null); S.dist.push(d != null ? +d : null);
+    }
+    const id = Date.parse(tag1(text, 'Id') || '');
+    return { pts, times, samples: S, sport, meta: { start: isFinite(id) ? id : S.t.find(isFinite), duration, distance, kcal } };
+  }
+
+  // Minimal FIT reader: session summary (msg 18) + per-second records (msg 20).
+  function parseFit(buf) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf);
+    if (u8.length < 14 || String.fromCharCode(u8[8], u8[9], u8[10], u8[11]) !== '.FIT') throw new Error('That .fit file could not be read.');
+    const hs = u8[0], end = Math.min(hs + dv.getUint32(4, true), u8.length), EPOCH = 631065600;
+    const defs = {}, recs = [], sessions = [];
+    let p = hs, lastTs = 0, sport = null;
+    const val = (q, size, bt, le) => {
+      const t = bt & 0x1f;
+      if (t === 0 || t === 2 || t === 13) return u8[q] === 0xFF ? null : u8[q];
+      if (t === 10) return u8[q] === 0 ? null : u8[q];
+      if (t === 1) { const v = dv.getInt8(q); return v === 0x7F ? null : v; }
+      if (size < 2) return null;
+      if (t === 3) { const v = dv.getInt16(q, le); return v === 0x7FFF ? null : v; }
+      if (t === 4 || t === 11) { const v = dv.getUint16(q, le); return v === 0xFFFF || (t === 11 && !v) ? null : v; }
+      if (size < 4) return null;
+      if (t === 5) { const v = dv.getInt32(q, le); return v === 0x7FFFFFFF ? null : v; }
+      if (t === 6 || t === 12) { const v = dv.getUint32(q, le); return v === 0xFFFFFFFF || (t === 12 && !v) ? null : v; }
+      if (t === 8) { const v = dv.getFloat32(q, le); return isFinite(v) ? v : null; }
+      return null;
     };
+    const read = d => { const m = {}; for (const [fn, size, bt] of d.fields) { if (p + size > u8.length) throw 0; m[fn] = val(p, size, bt, d.le); p += size; } p += d.dev; return m; };
+    const take = (num, m) => { if (num === 20) recs.push(m); else if (num === 18) sessions.push(m); else if (num === 12 && m[0] != null) sport = m[0]; };
+    try {
+      while (p < end) {
+        const h = u8[p++];
+        if (h & 0x80) {
+          const d = defs[(h >> 5) & 3]; if (!d) break;
+          const off = h & 0x1f; let ts = (lastTs & ~0x1f) + off; if (off < (lastTs & 0x1f)) ts += 0x20; lastTs = ts;
+          const m = read(d); m[253] = ts; take(d.num, m);
+        } else if (h & 0x40) {
+          p++; const le = u8[p++] === 0, num = dv.getUint16(p, le); p += 2;
+          const nf = u8[p++], fields = [];
+          for (let i = 0; i < nf; i++) { fields.push([u8[p], u8[p + 1], u8[p + 2]]); p += 3; }
+          let dev = 0;
+          if (h & 0x20) { const nd = u8[p++]; for (let i = 0; i < nd; i++) { dev += u8[p + 1]; p += 3; } }
+          defs[h & 0x0f] = { num, le, fields, dev };
+        } else {
+          const d = defs[h & 0x0f]; if (!d) break;
+          const m = read(d); if (m[253] != null) lastTs = m[253]; take(d.num, m);
+        }
+      }
+    } catch { /* truncated file: keep what was read */ }
+    const SC = 180 / 2 ** 31, pts = [], times = [], S = { t: [], hr: [], cad: [], dist: [] };
+    for (const r of recs) {
+      const t = r[253] != null ? (r[253] + EPOCH) * 1000 : NaN;
+      if (r[0] != null && r[1] != null) { pts.push(fixPt([r[0] * SC, r[1] * SC])); times.push(t); }
+      S.t.push(t); S.hr.push(r[3]); S.cad.push(r[4]); S.dist.push(r[5] != null ? r[5] / 100 : null);
+    }
+    const s = sessions[0] || {};
+    return { pts, times, samples: S, sport: s[5] ?? sport, meta: {
+      start: s[2] != null ? (s[2] + EPOCH) * 1000 : S.t.find(isFinite),
+      duration: s[8] != null ? s[8] / 1000 : s[7] != null ? s[7] / 1000 : 0,
+      distance: s[9] != null ? s[9] / 100 : 0, kcal: s[11] || 0, hrAvg: s[16], hrMax: s[17], cadAvg: s[18] } };
+  }
+
+  // Reads a GPX / TCX / FIT file (plain or .gz) from a stream of bytes.
+  async function readActivity(name, stream) {
+    let n = name.toLowerCase(), s = stream;
+    if (n.endsWith('.gz')) {
+      if (typeof DecompressionStream === 'undefined') throw new Error('This browser can’t unzip .gz files. Update iOS and try again.');
+      s = s.pipeThrough(new DecompressionStream('gzip')); n = n.slice(0, -3);
+    }
+    if (n.endsWith('.fit')) return { kind: 'fit', ...parseFit(await new Response(s).arrayBuffer()) };
+    const text = await new Response(s).text(), head = text.slice(0, 800);
+    if (n.endsWith('.tcx')) return { kind: 'tcx', head, ...parseTcx(text) };
+    if (n.endsWith('.gpx')) {
+      const g = parseGpx(text);
+      return { kind: 'gpx', head, pts: g.pts, times: g.times, sport: g.type, name: g.name,
+        samples: { t: g.times, hr: g.hrs, cad: g.cads, dist: [] }, meta: { start: g.start } };
+    }
+    return null;
+  }
+  const isRunSport = s => s == null || s === '' || s === 1 || s === '1' || s === '9' || /run/i.test(String(s));
+  function sourceOf(act, fallback) {
+    if (fallback) return fallback;
+    if (act.head && /strava/i.test(act.head)) return 'Strava';
+    if (act.head && /Apple Health/i.test(act.head)) return 'Apple Health';
+    return act.kind.toUpperCase() + ' file';
+  }
+
+  // Turns any parsed activity into a run (route, splits, heart rate, cadence).
+  function runFromTrack(act, source) {
+    const m = act.meta || {}, S = act.samples || { t: act.times || [], hr: [], cad: [], dist: [] };
+    const tFirst = S.t.find(isFinite), tLast = [...S.t].reverse().find(isFinite);
+    const start = isFinite(m.start) ? m.start : tFirst;
+    if (!isFinite(start)) return null;
+    const end = isFinite(tLast) && tLast > start ? tLast : start + (m.duration || 0) * 1000;
+    const r = { start, end, duration: m.duration || (end - start) / 1000, distance: m.distance || 0,
+      kcal: Math.round(m.kcal || 0), hr: 0, source, indoor: act.pts.length < 2 };
+    if (act.name) r.name = act.name;
+    if (act.pts.length > 1) {
+      Object.assign(r, analyzeRoute({ pts: act.pts, times: act.times }, start, end, r.distance));
+      if (!r.distance) r.distance = pathLength(act.pts);
+    } else if (S.dist.some(v => v != null)) { // treadmill files still carry distance over time
+      const raw = [];
+      for (let i = 0; i < S.t.length; i++) if (S.dist[i] != null && isFinite(S.t[i])) raw.push([S.dist[i], (S.t[i] - start) / 1000]);
+      if (raw.length > 5) { r.prof = thin(raw, 500).map(([a, b]) => [Math.round(a), Math.round(b)]); if (!r.distance) r.distance = raw[raw.length - 1][0]; }
+    }
+    const hp = [];
+    for (let i = 0; i < S.t.length; i++) if (S.hr[i] > 30 && S.hr[i] < 250 && isFinite(S.t[i])) hp.push([(S.t[i] - start) / 1000, S.hr[i]]);
+    if (hp.length >= 3) {
+      r.hr = Math.round(hp.reduce((a, b) => a + b[1], 0) / hp.length);
+      r.hrMax = Math.round(Math.max(...hp.map(x => x[1])));
+      r.hrSeries = thin(hp, 360).map(([a, b]) => [Math.round(a), Math.round(b)]);
+    } else { if (m.hrAvg) r.hr = m.hrAvg; if (m.hrMax) r.hrMax = m.hrMax; }
+    // Running files store cadence per foot, so double it for steps per minute.
+    const cs = S.cad.filter(v => v > 20 && v < 130);
+    if (cs.length >= 10) r.cadenceSpm = Math.round(cs.reduce((a, b) => a + b, 0) / cs.length * 2);
+    else if (m.cadAvg > 20 && m.cadAvg < 130) r.cadenceSpm = Math.round(m.cadAvg * 2);
+    return r;
+  }
+
+  function parseCsv(text) {
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+      else if (c !== '\r') f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+
+  // Strava "Download your account" archive: activities.csv + activities/<id>.gpx|.tcx|.fit[.gz]
+  async function importStravaZip(file, entries, csvEntry) {
+    const actEntries = entries.filter(e => /(^|\/)activities\/[^/]+\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name));
+    let wanted = [], others = 0;
+    if (csvEntry) {
+      const rows = parseCsv(await entryText(file, csvEntry)), hd = rows[0] || [];
+      const iT = hd.indexOf('Activity Type'), iF = hd.indexOf('Filename'), iN = hd.indexOf('Activity Name');
+      for (const row of rows.slice(1)) {
+        if (!row[iF]) continue;
+        if (!/run/i.test(row[iT] || '')) { others++; continue; }
+        const e = actEntries.find(x => x.name.endsWith(row[iF].replace(/^\.?\//, '')));
+        if (e) wanted.push({ e, name: row[iN] });
+      }
+    } else wanted = actEntries.map(e => ({ e, name: '' }));
+    let added = 0, found = 0, routes = 0;
+    for (const [i, w] of wanted.entries()) {
+      setStatus(`Reading Strava runs… ${i + 1} of ${wanted.length}`, (i + 1) / wanted.length);
+      try {
+        const act = await readActivity(w.e.name, await entryStream(file, w.e));
+        if (!act) continue;
+        if (!csvEntry && !isRunSport(act.sport)) { others++; continue; }
+        if (w.name) act.name = w.name;
+        const r = runFromTrack(act, 'Strava');
+        if (!r) continue;
+        found++; if (r.route) routes++;
+        if (addRun(r)) added++;
+      } catch {}
+    }
+    return { added, found, others, routes };
   }
 
   /* ---------- adding runs ---------- */
@@ -569,9 +746,11 @@
     const key = Math.round(r.start / 60000);
     const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000);
     if (existing) {
-      if (r.route && (!existing.route || r.prof)) existing.route = r.route;
-      for (const f of ['distance', 'duration', 'kcal', 'end']) if (!existing[f] && r[f]) existing[f] = r[f];
-      for (const f of ['hr', 'hrMax', 'hrSeries', 'stride', 'speedAvg', 'prof', 'gpsDist']) if (r[f]) existing[f] = r[f];
+      // Fill in only what the saved run is missing, so a second source never overwrites good data.
+      if (r.route && (!existing.route || (r.prof && !existing.prof))) existing.route = r.route;
+      for (const f of ['distance', 'duration', 'kcal', 'end', 'hr', 'hrMax', 'hrSeries', 'stride', 'speedAvg', 'prof', 'gpsDist', 'cadenceSpm', 'name'])
+        if (!existing[f] && r[f]) existing[f] = r[f];
+      if (r.source && existing.source && !existing.source.includes(r.source)) existing.source += ' + ' + r.source;
       return false;
     }
     delete r.routePath;
@@ -606,15 +785,22 @@
       for (const r of runs) if (addRun(r)) added++;
       return { added, found: runs.length, others, routes: runs.filter(r => r.route).length };
     }
-    const gpx = entries.filter(e => /\.gpx$/i.test(e.name) && !/(^|\/)\._/.test(e.name));
-    if (!gpx.length) throw new Error('No export.xml or .gpx files were found inside that .zip.');
-    let added = 0, found = 0;
-    for (const [i, e] of gpx.entries()) {
-      setStatus(`Reading routes… ${i + 1} of ${gpx.length}`, (i + 1) / gpx.length);
-      const r = runFromGpx(parseGpx(await entryText(file, e)), e.name.split('/').pop());
-      if (r) { found++; if (addRun(r)) added++; }
+    const csv = entries.find(e => /(^|\/)activities\.csv$/i.test(e.name));
+    if (csv || entries.some(e => /(^|\/)activities\/[^/]+\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name))) return importStravaZip(file, entries, csv);
+    const files = entries.filter(e => /\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name) && !/(^|\/)\._/.test(e.name));
+    if (!files.length) throw new Error('That .zip has no Apple Health export, Strava archive, or GPX/TCX/FIT files in it.');
+    let added = 0, found = 0, routes = 0, others = 0;
+    for (const [i, e] of files.entries()) {
+      setStatus(`Reading activities… ${i + 1} of ${files.length}`, (i + 1) / files.length);
+      try {
+        const act = await readActivity(e.name, await entryStream(file, e));
+        if (!act) continue;
+        if (!isRunSport(act.sport)) { others++; continue; }
+        const r = runFromTrack(act, sourceOf(act));
+        if (r) { found++; if (r.route) routes++; if (addRun(r)) added++; }
+      } catch {}
     }
-    return { added, found, others: 0, routes: found };
+    return { added, found, others, routes };
   }
 
   async function importFiles(files) {
@@ -629,9 +815,10 @@
         enrichRuns(runs, extra);
         let added = 0; for (const r of runs) if (addRun(r)) added++;
         res = { added, found: runs.length, others, routes: 0 };
-      } else if (n.endsWith('.gpx')) {
-        const r = runFromGpx(parseGpx(await f.text()), f.name);
-        res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: 1 } : { added: 0, found: 0, others: 0, routes: 0 };
+      } else if (/\.(gpx|tcx|fit)(\.gz)?$/.test(n)) {
+        const act = await readActivity(f.name, f.stream());
+        const r = act && runFromTrack(act, sourceOf(act));
+        res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: r.route ? 1 : 0 } : { added: 0, found: 0, others: 0, routes: 0 };
       } else skipped.push(f.name);
       if (res) for (const k in totals) totals[k] += res[k];
     }
@@ -870,6 +1057,7 @@
     $('footer').hidden = true;
     $('content').innerHTML = `<div class="runpage">
       <button class="back" id="backBtn" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>All runs</button>
+      ${r.name ? `<div class="rname">${esc(r.name)}</div>` : ''}
       <div class="when">${esc(fmtDate(r.start))} ${badge}</div>
       <div class="dist big">${r.distance ? fmtDist(r.distance) : '–'}<small>${U}</small></div>
       ${detailHtml(r)}
@@ -1101,12 +1289,13 @@
       const sp = splitsOf(r.prof, unitM);
       const paces = sp.map(s => s.sec / s.dist * unitM), fastest = Math.min(...paces.filter((_, i) => !sp[i].partial || sp.length === 1));
       const slowest = Math.max(...paces), floor = fastest * 0.85;
+      const fastIdx = slowest - fastest >= 1 && sp.length > 1 ? paces.findIndex((v, i) => v === fastest && (!sp[i].partial || sp.length === 1)) : -1;
       html += `<div class="splits">` + sp.map((s, i) => {
         const pace = paces[i], w = 35 + 65 * ((slowest - pace) / ((slowest - floor) || 1));
         return `<div class="srow"><span class="sk">${s.partial ? (s.dist / unitM).toFixed(2) : s.n} ${U}</span>
           <span class="sbar"><i style="width:${Math.max(8, Math.min(100, w)).toFixed(1)}%"></i></span>
           <span class="sp">${mmss(pace)}<small>/${U}</small></span>
-          <span class="sn">${Math.abs(pace - fastest) < 0.5 && sp.length > 1 ? 'Fastest' : s.partial ? mmss(s.sec) : ''}</span></div>`;
+          <span class="sn">${i === fastIdx ? 'Fastest' : s.partial ? mmss(s.sec) : ''}</span></div>`;
       }).join('') + `</div>`;
       const ps = paceSeriesOf(r.prof, unitM);
       if (ps.length > 5) {
@@ -1115,7 +1304,7 @@
           yTicks: (lo, hi) => { const st = (hi - lo) > 240 ? 60 : 30, a = Math.floor(lo / st) * st, b = Math.ceil(hi / st) * st, t = []; for (let v = a; v <= b; v += st) t.push(v); return t; },
           yFmt: mmss, xTicks: (a, b) => niceTicks(a, b, 4), xFmt: v => (+v.toFixed(2)) + ' ' + U,
           tip: p => `<b>${mmss(p[1])} /${U}</b><span>at ${p[0].toFixed(2)} ${U}</span>`
-        }) + `<div class="note">Faster is higher. From GPS, smoothed over about 150 m.</div>`;
+        }) + `<div class="note">Faster is higher. ${r.route ? 'From GPS' : 'From the watch’s distance'}, smoothed over about 150 m.</div>`;
       }
     } else {
       html += `<div class="note">${r.indoor ? 'Treadmill runs have no GPS, so there are no splits.' : r.route ? 'Import your Health export.zip again to calculate splits for this run.' : 'This run has no GPS route.'}</div>`;
