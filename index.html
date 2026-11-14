@@ -71,6 +71,8 @@
   .stats{display:flex;gap:16px}
   .stat .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
   .stat .v{font:600 19px/1.15 var(--num)}
+  .chev{flex:none;align-self:center;color:var(--muted);transition:transform .2s}
+  .run.open .chev{transform:rotate(180deg)}
   .thumb{width:86px;flex:none;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center}
   .thumb svg{width:100%;height:100%}
   .thumb .none{font-size:10.5px;color:var(--muted);text-align:center;padding:6px}
@@ -138,7 +140,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v6</span>
+    <span>Saved on this device only · v7</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -531,7 +533,7 @@
               <div class="stat"><div class="k">${speedUnit()}</div><div class="v">${fmtSpeed(r.duration, r.distance)}</div></div>
             </div>
           </div>
-          <div class="thumb">${r.route && r.route.length > 1 ? routeSvg(r.route, 86, 86, { pad: 9, stroke: 2, marker: 3 }) : `<div class="none">${r.indoor ? 'Indoor run' : 'No route'}</div>`}</div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
         </div>
         <div class="detail">${open ? detailHtml(r) : ''}</div>
       </div>`;
