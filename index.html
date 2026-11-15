@@ -204,11 +204,28 @@
   .lv-name:focus{border-bottom-color:var(--muted)}
   .live-top small{font-size:12px;color:var(--muted)}
   .live-top b{font:700 34px var(--num);color:var(--accent);font-variant-numeric:tabular-nums}
-  .restbar{position:sticky;top:8px;z-index:500;display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:var(--accent);color:#1a0d06;box-shadow:0 6px 18px rgba(0,0,0,.4)}
-  .restbar[hidden]{display:none}
-  .restbar span{font:700 13px Inter;text-transform:uppercase;letter-spacing:.6px}
-  .restbar b{font:700 26px var(--num);margin-right:auto;font-variant-numeric:tabular-nums}
-  .restbar button{all:unset;cursor:pointer;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.18);font:700 13px Inter}
+  .restdock{position:fixed;left:0;right:0;bottom:0;z-index:900;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(20,20,22,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+  .restdock .rd-in{max-width:640px;margin:0 auto}
+  .rd-row{display:flex;align-items:center;gap:8px}
+  .rd-row + .rd-row{margin-top:8px}
+  .rd-lbl{font:700 11px Inter;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .rd-time{font:700 30px var(--num);font-variant-numeric:tabular-nums;margin-right:auto;line-height:1}
+  .rd-idle .rd-time{font-size:22px}
+  .restdock button{all:unset;cursor:pointer;box-sizing:border-box;min-width:44px;height:40px;padding:0 12px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font:700 14px Inter;color:var(--text);display:inline-flex;align-items:center;justify-content:center}
+  .restdock button.go{background:var(--accent);border-color:var(--accent);color:#1a0d06}
+  .restdock button.snd{min-width:40px;padding:0 8px;font-size:16px}
+  .restdock button.snd.off{opacity:.45}
+  .rd-bar{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin-top:8px}
+  .rd-bar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .5s linear}
+  .restdock.running{background:rgba(42,24,14,.97);border-top-color:var(--accent)}
+  .restdock.running .rd-time{color:var(--accent2)}
+  .restdock.finish{background:#12291c;border-top-color:var(--go)}
+  .restdock.finish .rd-time{color:var(--go)}
+  .restdock.finish .rd-bar i{background:var(--go)}
+  body.in-live #content{padding-bottom:150px}
+  .lv-exrest{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font:400 12px Inter;color:var(--muted)}
+  .lv-exrest select,.ex-rest select{padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:13px Inter}
+  .ex-rest{grid-column:1 / -1;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:-2px 0 4px}
   .lv-ex{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
   .lv-exh{display:flex;align-items:flex-start;gap:6px}
   .lv-exh > div{flex:1;min-width:0;font:600 15px Inter}
@@ -507,7 +524,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v28<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v29<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2416,7 +2433,7 @@
   function startWorkout(presetId) {
     const p = presetId ? presetById(presetId) : null;
     state.live = { start: Date.now(), name: p ? p.name : 'Workout', presetId: p ? p.id : null, rest: p ? p.rest || 0 : 90, restEnd: null,
-      ex: p ? p.ex.map(ex => ({ name: ex.name, target: ex.reps, sets: Array.from({ length: Math.max(1, +ex.sets || 1) }, () => ({ w: ex.w === '' || ex.w == null ? '' : +fmtWeight(ex).split(' ')[0], wu: wUnit(), reps: '', done: false })) })) : [] };
+      ex: p ? p.ex.map(ex => ({ name: ex.name, target: ex.reps, rest: ex.rest == null || ex.rest === '' ? null : +ex.rest, sets: Array.from({ length: Math.max(1, +ex.sets || 1) }, () => ({ w: ex.w === '' || ex.w == null ? '' : +fmtWeight(ex).split(' ')[0], wu: wUnit(), reps: '', done: false })) })) : [] };
     state.startOpen = false; saveLive(); goHash('#workout-live');
   }
   function wireStart() {
@@ -2429,19 +2446,122 @@
     });
   }
 
-  let liveTick = null, beepNode = null, audioCtx = null;
-  function beepAt(secFromNow) { // short double beep when the rest timer ends (works while the app is open)
+  let liveTick = null, beepNodes = [], audioCtx = null, wakeLock = null, wasHidden = false;
+  const REST_CHOICES = [0, 15, 20, 30, 45, 60, 75, 90, 105, 120, 150, 180, 210, 240, 300];
+  const restOpts = (cur, withDefault) => (withDefault ? `<option value=""${cur == null || cur === '' ? ' selected' : ''}>Workout default</option>` : '') +
+    REST_CHOICES.map(v => `<option value="${v}"${cur !== '' && cur != null && +cur === v ? ' selected' : ''}>${v ? fmtRest(v) : 'Off'}</option>`).join('');
+  const soundOn = () => localStorage.getItem('runlog.restsound') !== 'off';
+  function ctx() {
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      audioCtx.resume && audioCtx.resume();
-      if (beepNode) { try { beepNode.stop(); } catch {} beepNode = null; }
-      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + Math.max(0, secFromNow);
-      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
-      g.gain.setValueAtTime(0, 0); g.gain.setValueAtTime(.25, t); g.gain.setValueAtTime(0, t + .15); g.gain.setValueAtTime(.25, t + .3); g.gain.setValueAtTime(0, t + .45);
-      o.start(); o.stop(t + .5); beepNode = o;
+      if (audioCtx.state !== 'running') audioCtx.resume();
+      return audioCtx;
+    } catch { return null; }
+  }
+  function unlockAudio() { // iPhone only allows sound after a tap; play a silent blip on the first one
+    const c = ctx(); if (!c || c._unlocked) return;
+    try { const b = c.createBuffer(1, 1, 22050), src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start(0); c._unlocked = true; } catch {}
+  }
+  function tone(c, t, freq, dur, vol) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = freq; o.connect(g); g.connect(c.destination);
+    g.gain.setValueAtTime(0, c.currentTime); g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.setValueAtTime(vol, t + dur - .03); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.start(c.currentTime); o.stop(t + dur + .02); beepNodes.push(o);
+  }
+  function scheduleBeeps(secFromNow) { // 3-2-1 ticks, then a triple "go" beep, timed on the audio clock
+    cancelBeep(); wasHidden = false;
+    if (!soundOn()) return;
+    const c = ctx(); if (!c) return;
+    const t0 = c.currentTime + Math.max(0, secFromNow);
+    try {
+      [3, 2, 1].forEach(k => { if (secFromNow > k + .3) tone(c, t0 - k, 660, .12, .35); });
+      [0, .22, .44].forEach((d, i) => tone(c, t0 + d, 990, i === 2 ? .45 : .16, .5));
     } catch {}
   }
-  const cancelBeep = () => { if (beepNode) { try { beepNode.stop(); } catch {} beepNode = null; } };
+  function ringNow() {
+    if (navigator.vibrate) try { navigator.vibrate([200, 100, 200, 100, 400]); } catch {}
+    if (!soundOn()) return;
+    const c = ctx(); if (!c) return;
+    try { cancelBeep(); [0, .22, .44].forEach((d, i) => tone(c, c.currentTime + .05 + d, 990, i === 2 ? .45 : .16, .5)); } catch {}
+  }
+  const beepAt = scheduleBeeps;
+  const cancelBeep = () => { beepNodes.forEach(n => { try { n.stop(); } catch {} }); beepNodes = []; };
+  async function wakeOn() { // keep the screen on during a workout so the timer keeps counting and can beep
+    try { if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch {}
+  }
+  function leaveLive() {
+    document.body.classList.remove('in-live');
+    const d = $('restDock'); if (d) d.remove();
+    try { wakeLock && wakeLock.release(); } catch {} wakeLock = null;
+  }
+  function startRest(sec) {
+    const L = state.live; if (!L) return;
+    unlockAudio();
+    L.restEnd = Date.now() + sec * 1000; L.restLen = sec; L.doneAt = null;
+    scheduleBeeps(sec); saveLive(); drawDock();
+  }
+  function stopRest() {
+    const L = state.live; if (!L) return;
+    L.restEnd = null; L.doneAt = null; cancelBeep(); saveLive(); drawDock();
+  }
+  function adjustRest(delta) {
+    const L = state.live; if (!L || !L.restEnd) return;
+    L.restEnd = Math.max(Date.now() + 1000, L.restEnd + delta * 1000);
+    L.restLen = Math.max(1, (L.restLen || 0) + delta);
+    scheduleBeeps((L.restEnd - Date.now()) / 1000); saveLive(); updateDock();
+  }
+  function drawDock() { // bottom panel: idle (default rest + Start) or counting down
+    const L = state.live; if (!L) return;
+    let d = $('restDock');
+    if (!d) { d = document.createElement('div'); d.id = 'restDock'; d.className = 'restdock'; document.body.appendChild(d); }
+    const running = !!L.restEnd, finished = !running && L.doneAt && Date.now() - L.doneAt < 4000;
+    d.className = 'restdock' + (running ? ' running' : finished ? ' finish' : '');
+    const snd = `<button type="button" class="snd${soundOn() ? '' : ' off'}" data-rd="snd" aria-label="Rest sound ${soundOn() ? 'on' : 'off'}">${soundOn() ? '🔔' : '🔕'}</button>`;
+    d.innerHTML = `<div class="rd-in">` + (running
+      ? `<div class="rd-row"><div><div class="rd-lbl">Rest</div><b class="rd-time" id="rdTime">0:00</b></div>
+          <button type="button" data-rd="-15">−15s</button><button type="button" data-rd="+15">+15s</button><button type="button" class="go" data-rd="skip">Skip</button>${snd}</div>
+          <div class="rd-bar"><i id="rdBar"></i></div>`
+      : `<div class="rd-row rd-idle"><div><div class="rd-lbl">${finished ? 'Rest done — next set!' : 'Rest timer'}</div><b class="rd-time">${L.rest ? fmtRest(L.rest) : 'Off'}</b></div>
+          <button type="button" data-rd="def-15" aria-label="Shorter default rest">−</button><button type="button" data-rd="def+15" aria-label="Longer default rest">+</button>
+          <button type="button" class="go" data-rd="start"${L.rest ? '' : ' disabled'}>Start</button>${snd}</div>`) + `</div>`;
+    d.querySelectorAll('[data-rd]').forEach(b => b.onclick = () => {
+      const a = b.dataset.rd; unlockAudio();
+      if (a === 'skip') stopRest();
+      else if (a === '-15') adjustRest(-15);
+      else if (a === '+15') adjustRest(15);
+      else if (a === 'start') { if (L.rest) startRest(L.rest); }
+      else if (a === 'snd') {
+        localStorage.setItem('runlog.restsound', soundOn() ? 'off' : 'on');
+        if (soundOn() && L.restEnd) scheduleBeeps((L.restEnd - Date.now()) / 1000); else cancelBeep();
+        if (soundOn()) { const c = ctx(); if (c) try { tone(c, c.currentTime + .05, 990, .12, .4); } catch {} }
+        drawDock();
+      } else if (a.startsWith('def')) {
+        const i = REST_CHOICES.indexOf(L.rest || 0), cur = i < 0 ? 0 : i;
+        L.rest = REST_CHOICES[Math.max(0, Math.min(REST_CHOICES.length - 1, cur + (a === 'def+15' ? 1 : -1)))];
+        saveLive(); drawDock();
+      }
+    });
+    updateDock();
+  }
+  function updateDock() {
+    const L = state.live; if (!L) return;
+    const d = $('restDock');
+    if (!L.restEnd) { if (d && d.classList.contains('finish') && L.doneAt && Date.now() - L.doneAt >= 4000) drawDock(); return; }
+    const left = Math.max(0, (L.restEnd - Date.now()) / 1000);
+    if ($('rdTime')) $('rdTime').textContent = fmtDur(Math.ceil(left));
+    if ($('rdBar')) $('rdBar').style.width = (L.restLen ? Math.min(100, 100 * (1 - left / L.restLen)) : 0) + '%';
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { wasHidden = true; return; }
+    if (document.visibilityState !== 'visible' || !state.live || !document.body.classList.contains('in-live')) return;
+    wakeOn(); ctx();
+    const L = state.live;
+    if (L.restEnd) { // reschedule sound from the real remaining time
+      if (Date.now() < L.restEnd) scheduleBeeps((L.restEnd - Date.now()) / 1000);
+    }
+  });
+  document.addEventListener('pointerdown', () => { if (document.body.classList.contains('in-live')) unlockAudio(); }, { passive: true });
   function renderLive() {
     const L = state.live;
     if (!L) { goHash('#workout'); return; }
@@ -2451,13 +2571,13 @@
         <div><input id="lvName" class="lv-name" maxlength="50" value="${esc(L.name)}" aria-label="Workout name"><small>${setsDone} set${setsDone === 1 ? '' : 's'} done</small></div>
         <b id="lvClock">0:00</b>
       </div>
-      <div class="restbar" id="restBar" hidden><span>Rest</span><b id="restLeft">0:00</b>
-        <button type="button" data-rest="-15">−15</button><button type="button" data-rest="15">+15</button><button type="button" data-rest="skip">Skip</button></div>`;
+`;
     L.ex.forEach((e, ei) => {
       const lf = lastFirstSet(e.name), best = allTimeBest(e.name);
       html += `<div class="lv-ex">
         <div class="lv-exh"><div>${exItem({ name: e.name, sets: '', reps: '' }, 'lv' + ei).replace(/<span>[^<]*<\/span>/, '')}
           ${e.target ? `<small class="lv-last">Target: ${esc(String(e.target))} reps</small>` : ''}
+          <label class="lv-exrest">Rest after each set <select data-exrest="${ei}">${restOpts(e.rest, true)}</select></label>
           ${lf || best ? `<div class="lv-track">${lf ? `<div><small>Last time, set 1</small><b>${fmtSet(lf)}</b><i>${esc(shortDate(lf.when))}</i></div>` : ''}${best ? `<div class="pr"><small>All-time best</small><b>${fmtSet(best)}</b><i>${esc(shortDate(best.when))}</i></div>` : ''}</div>`
             : `<small class="lv-last">First time logging this exercise.</small>`}</div>
           <button type="button" class="rt-edit" data-rmex="${ei}" aria-label="Remove ${esc(e.name)}">✕</button></div>
@@ -2472,22 +2592,25 @@
       </div>`;
     });
     html += `<form class="lv-add" id="lvAdd"><input id="lvNew" list="exList3" placeholder="Add an exercise…" maxlength="50" autocomplete="off"><datalist id="exList3">${exOptions()}</datalist><button type="submit">Add</button></form>
-      <div class="lv-rest-set">Rest between sets <select id="lvRest">${[0, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 300].map(v => `<option value="${v}"${(L.rest || 0) === v ? ' selected' : ''}>${v ? fmtRest(v) : 'Off'}</option>`).join('')}</select></div>
       <button type="button" class="wide-btn primary" id="lvFinish">Finish workout</button>
       <button type="button" class="wide-btn" id="lvDiscard">Discard workout</button>`;
     $('content').innerHTML = html;
     wireVids(); wireWToggle();
+    document.body.classList.add('in-live');
+    wakeOn();
     // clock + rest timer
     clearInterval(liveTick);
     const tick = () => {
       if (!$('lvClock')) { clearInterval(liveTick); return; }
       $('lvClock').textContent = fmtDur((Date.now() - L.start) / 1000);
-      const left = L.restEnd ? Math.ceil((L.restEnd - Date.now()) / 1000) : 0;
-      $('restBar').hidden = left <= 0;
-      if (left > 0) $('restLeft').textContent = fmtRest(left).replace(' s', 's') || '0';
-      else if (L.restEnd) { L.restEnd = null; saveLive(); }
+      if (L.restEnd && Date.now() >= L.restEnd) { // rest over
+        if (wasHidden) ringNow(); // the scheduled sound was missed while the app was in the background
+        else if (navigator.vibrate) try { navigator.vibrate([200, 100, 200, 100, 400]); } catch {}
+        L.restEnd = null; L.doneAt = Date.now(); saveLive(); drawDock(); return;
+      }
+      updateDock();
     };
-    tick(); liveTick = setInterval(tick, 500);
+    drawDock(); tick(); liveTick = setInterval(tick, 250);
     const live = $('content');
     live.oninput = ev => {
       const t = ev.target;
@@ -2502,13 +2625,12 @@
       s.done = !s.done;
       if (s.done && !s.reps && e.target) s.reps = String(e.target).split(/[-–]/)[0];
       if (s.done) { const b0 = allTimeBest(e.name); if (b0 && toKg(s) > b0.kg + 1e-6) showMsg(`New all-time best on ${esc(e.name)}: ${fmtSet(s)} 🎉`); }
-      if (s.done && L.rest) { L.restEnd = Date.now() + L.rest * 1000; beepAt(L.rest); } else if (!s.done) { L.restEnd = null; cancelBeep(); }
+      const r = e.rest == null || e.rest === '' ? L.rest : +e.rest;
+      if (s.done && r) startRest(r); else if (!s.done) stopRest();
       saveLive(); render();
     });
-    live.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => {
-      if (b.dataset.rest === 'skip') { L.restEnd = null; cancelBeep(); }
-      else { L.restEnd = Math.max(Date.now(), (L.restEnd || Date.now()) + +b.dataset.rest * 1000); beepAt((L.restEnd - Date.now()) / 1000); }
-      saveLive(); tick();
+    live.querySelectorAll('[data-exrest]').forEach(sel => sel.onchange = () => {
+      const v = sel.value; L.ex[+sel.dataset.exrest].rest = v === '' ? null : +v; saveLive();
     });
     live.querySelectorAll('[data-addset]').forEach(b => b.onclick = () => {
       const e = L.ex[+b.dataset.addset], prev = e.sets[e.sets.length - 1] || {};
@@ -2525,7 +2647,6 @@
       L.ex.push({ name: n, target: '', sets: [{ w: ls && ls.w !== '' ? +fmtWeight(ls).split(' ')[0] : '', wu: U, reps: '', done: false }] });
       saveLive(); render(); window.scrollTo(0, document.body.scrollHeight);
     };
-    $('lvRest').onchange = ev => { L.rest = +ev.target.value; saveLive(); };
     $('lvFinish').onclick = () => {
       const done = L.ex.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0);
       const b = $('lvFinish');
@@ -2533,7 +2654,7 @@
       const rec = { id: newId(), start: L.start, end: Date.now(), name: L.name.trim() || 'Workout', presetId: L.presetId, rest: L.rest,
         ex: L.ex.map(e => ({ name: e.name, sets: e.sets.map(s => ({ w: s.w, wu: s.wu, reps: s.reps, done: s.done })) })) };
       wo.log.push(rec); saveWo();
-      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep();
+      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep(); leaveLive();
       state.woMonth = 0; state.woDay = dayKey(new Date(rec.start));
       showMsg(`Workout saved: ${esc(rec.name)} · ${fmtDur((rec.end - rec.start) / 1000)} · ${done} sets.`);
       goHash('#workout');
@@ -2541,7 +2662,7 @@
     $('lvDiscard').onclick = () => {
       const b = $('lvDiscard');
       if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to discard this workout'; b.classList.add('danger'); return; }
-      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep(); goHash('#workout');
+      state.live = null; saveLive(); clearInterval(liveTick); cancelBeep(); leaveLive(); goHash('#workout');
     };
   }
   function liveBanner(view) {
@@ -2573,11 +2694,12 @@
             <button type="button" data-mv="1" aria-label="Move down"${i === d.ex.length - 1 ? ' disabled' : ''}>↓</button>
             <button type="button" data-rm aria-label="Remove exercise"${d.ex.length === 1 ? ' disabled' : ''}>✕</button>
           </div>
+          <label class="ex-rest">Rest after each set <select data-f="rest">${restOpts(ex.rest, true)}</select></label>
         </div>`).join('')}
         <datalist id="exList">${exOptions()}</datalist>
         <button type="button" class="linkbtn" id="exAdd">+ Add exercise</button>
         <label style="margin-top:10px">Notes (optional)<input id="woNotes" maxlength="200" placeholder="e.g. Warm up with 2 light sets first" value="${esc(d.notes || '')}"></label>
-        <div class="note" style="margin:-4px 0 10px">Leave weight empty for bodyweight exercises. Reps can be a range like 8-10. Add how-to videos to exercises in the <b>Exercises</b> tab.</div>
+        <div class="note" style="margin:-4px 0 10px">Leave weight empty for bodyweight exercises. Each exercise can have its own rest; set it to <b>Off</b> on the first exercise of a superset so you go straight to the second. Reps can be a range like 8-10. Add how-to videos to exercises in the <b>Exercises</b> tab.</div>
         <div class="sheet-btns">
           ${d.id ? `<button type="button" class="danger" id="woDelete">Delete</button>` : ''}
           <button type="button" id="woCancel">Cancel</button>
@@ -2613,6 +2735,7 @@
       else if (t.dataset.f) {
         const ex = d.ex[+t.closest('.ex-row').dataset.i];
         if (t.dataset.f === 'w') { ex.w = t.value === '' ? '' : +t.value; ex.wu = wUnit(); }
+        else if (t.dataset.f === 'rest') ex.rest = t.value === '' ? null : +t.value;
         else ex[t.dataset.f] = t.dataset.f === 'sets' ? (t.value === '' ? '' : +t.value) : t.value;
         const row = t.closest('.ex-row');
       }
@@ -2921,6 +3044,7 @@
     document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim' || sport === 'workout');
     renderNavs(sport, view);
     destroyMaps();
+    if (!(sport === 'workout' && view === 'live')) leaveLive();
     if (sport === 'health') { state.shownRun = null; return view === 'sleep' ? renderSleep() : view === 'day' ? renderDay() : renderHealth(); }
     if (sport === 'workout') { state.shownRun = null; return renderWorkout(view); }
     if (sport === 'bike') return renderBike(view);
