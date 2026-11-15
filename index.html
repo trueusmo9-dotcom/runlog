@@ -404,6 +404,7 @@
   .sechead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .sechead h3{margin:0}
   .seg.hrsw button{padding:5px 12px;font-size:12.5px}
+  .badge.out{background:#10222b;color:#7fd3f0}
   .badge.polar{background:#3a1d22;color:#ff9a9d}
   .note{font-size:12px;color:var(--muted);margin-top:6px}
   .chart{position:relative;background:var(--card2);border-radius:12px;padding:6px 4px 0}
@@ -506,7 +507,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v27<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v28<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -523,6 +524,7 @@
   /* ---------- storage ---------- */
   function load() {
     try { state.runs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { state.runs = []; }
+    try { state.rides = JSON.parse(localStorage.getItem('runlog.rides') || '[]'); } catch { state.rides = []; }
     let repaired = false;
     for (const r of state.runs) if (r.route && r.route.some(p => p[1] > 180 || p[0] > 90)) {
       r.route = r.route.map(p => roundPt(fixPt(p))); repaired = true;
@@ -536,7 +538,7 @@
     try { const m = parseInt(localStorage.getItem('runlog.maxhr'), 10); if (m >= 140 && m <= 230) state.maxHr = m; } catch {}
   }
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state.runs)); return true; }
+    try { localStorage.setItem(KEY, JSON.stringify(state.runs)); localStorage.setItem('runlog.rides', JSON.stringify(state.rides || [])); return true; }
     catch { return false; }
   }
 
@@ -689,7 +691,8 @@
   function parseWorkout(str) {
     const head = str.slice(0, str.indexOf('>') + 1);
     const a = attrs(head);
-    if (a.workoutActivityType !== 'HKWorkoutActivityTypeRunning') return null;
+    const kind = a.workoutActivityType === 'HKWorkoutActivityTypeRunning' ? 'run' : a.workoutActivityType === 'HKWorkoutActivityTypeCycling' ? 'bike' : null;
+    if (!kind) return null;
     const start = parseHealthDate(a.startDate), end = parseHealthDate(a.endDate);
     let duration = toSeconds(a.duration, a.durationUnit) || (end - start) / 1000;
     let distance = a.totalDistance ? toMeters(a.totalDistance, a.totalDistanceUnit) : 0;
@@ -697,7 +700,7 @@
     let hr = 0, hrMax = 0, stride = 0, speedAvg = 0;
     for (const m of str.matchAll(/<WorkoutStatistics\b[^>]*>/g)) {
       const s = attrs(m[0]);
-      if (/DistanceWalkingRunning$/.test(s.type) && !distance) distance = toMeters(s.sum, s.unit);
+      if (/Distance(WalkingRunning|Cycling)$/.test(s.type) && !distance) distance = toMeters(s.sum, s.unit);
       else if (/ActiveEnergyBurned$/.test(s.type) && !kcal) kcal = parseFloat(s.sum) * (s.unit === 'kJ' ? 0.239006 : 1);
       else if (/HeartRate$/.test(s.type)) { hr = parseFloat(s.average) || 0; hrMax = parseFloat(s.maximum) || 0; }
       else if (/RunningStrideLength$/.test(s.type)) stride = toMeters(s.average, s.unit);
@@ -707,7 +710,7 @@
     return {
       start, end: isFinite(end) ? end : start + duration * 1000, duration, distance, kcal: Math.round(kcal) || 0,
       hr: Math.round(hr) || 0, hrMax: Math.round(hrMax) || 0, stride, speedAvg,
-      source: a.sourceName || 'Apple Health',
+      source: a.sourceName || 'Apple Health', kind,
       indoor: /key="HKIndoorWorkout"\s+value="1"/.test(str),
       routePath: ref ? unesc(ref[1]) : null, route: null
     };
@@ -829,7 +832,7 @@
   async function scanHealthXml(byteStream, totalBytes, onProgress) {
     const reader = byteStream.pipeThrough(new TextDecoderStream()).getReader();
     let buf = '', seen = 0, others = 0, lastTick = 0;
-    const runs = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
+    const runs = [], rides = [], inv = { records: {}, workouts: {}, routes: 0, activitySummaries: 0 };
     const extra = { hrT: [], hrV: [], hrP: [], hrN: [], hrNames: [], speed: [], stride: [], health: { slots: {}, avg: {}, sleep: {} } };
     const re = /<(Record|Workout|ActivitySummary) /g;
     for (;;) {
@@ -866,7 +869,7 @@
         bump(inv.workouts, wt + '|' + getAttr(head, 'sourceName'), { type: wt, src: getAttr(head, 'sourceName') }, getAttr(head, 'startDate').slice(0, 10));
         if (str.includes('<FileReference')) inv.routes++;
         const w = parseWorkout(str);
-        if (w) runs.push(w); else others++;
+        if (w) (w.kind === 'bike' ? rides : runs).push(w); else others++;
         pos = end;
       }
       buf = buf.slice(pos);
@@ -880,7 +883,7 @@
       workouts: Object.values(inv.workouts).map(o => ({ ...o, src: unesc(o.src) })),
       routes: inv.routes, activitySummaries: inv.activitySummaries
     };
-    return { runs, others, extra };
+    return { runs, rides, others, extra };
   }
 
   /* ---------- coordinate repair ----------
@@ -1114,6 +1117,7 @@
     }
     return null;
   }
+  const isBikeSport = s => s === 2 || s === '2' || /bik|cycl|ride/i.test(String(s ?? ''));
   const isRunSport = s => s == null || s === '' || s === 1 || s === '1' || s === '9' || /run/i.test(String(s));
   function sourceOf(act, fallback) {
     if (fallback) return fallback;
@@ -1177,33 +1181,38 @@
       const iT = hd.indexOf('Activity Type'), iF = hd.indexOf('Filename'), iN = hd.indexOf('Activity Name');
       for (const row of rows.slice(1)) {
         if (!row[iF]) continue;
-        if (!/run/i.test(row[iT] || '')) { others++; continue; }
+        const bike = /ride|cycl|bik/i.test(row[iT] || '');
+        if (!bike && !/run/i.test(row[iT] || '')) { others++; continue; }
         const e = actEntries.find(x => x.name.endsWith(row[iF].replace(/^\.?\//, '')));
-        if (e) wanted.push({ e, name: row[iN] });
+        if (e) wanted.push({ e, name: row[iN], bike });
       }
     } else wanted = actEntries.map(e => ({ e, name: '' }));
-    let added = 0, found = 0, routes = 0;
+    let added = 0, found = 0, routes = 0, rides = 0, ridesNew = 0;
     for (const [i, w] of wanted.entries()) {
-      setStatus(`Reading Strava runs… ${i + 1} of ${wanted.length}`, (i + 1) / wanted.length);
+      setStatus(`Reading Strava activities… ${i + 1} of ${wanted.length}`, (i + 1) / wanted.length);
       try {
         const act = await readActivity(w.e.name, await entryStream(file, w.e));
         if (!act) continue;
-        if (!csvEntry && !isRunSport(act.sport)) { others++; continue; }
+        const bike = csvEntry ? w.bike : isBikeSport(act.sport);
+        if (!csvEntry && !bike && !isRunSport(act.sport)) { others++; continue; }
         if (w.name) act.name = w.name;
         const r = runFromTrack(act, 'Strava');
         if (!r) continue;
+        if (bike) { rides++; if (addRide(r)) ridesNew++; continue; }
         found++; if (r.route) routes++;
         if (addRun(r)) added++;
       } catch {}
     }
-    return { added, found, others, routes };
+    return { added, found, others, routes, rides, ridesNew };
   }
 
   /* ---------- adding runs ---------- */
-  function addRun(r) {
+  const addRide = r => addRun(r, state.rides);
+  function addRun(r, list) {
+    list = list || state.runs;
     if (!isFinite(r.start)) return false;
     const key = Math.round(r.start / 60000);
-    const existing = state.runs.find(x => Math.abs(x.start - r.start) < 180000 || overlapShare(x, r) >= 0.5);
+    const existing = list.find(x => Math.abs(x.start - r.start) < 180000 || overlapShare(x, r) >= 0.5);
     if (existing) {
       // A watch recording replaces the route and stats of a run that so far only had Polar Beat data.
       if (isPolar(existing.source) && !existing.source.includes('+') && r.source && !isPolar(r.source))
@@ -1221,9 +1230,9 @@
       if (r.source && existing.source && !existing.source.includes(r.source)) existing.source += ' + ' + r.source;
       return false;
     }
-    delete r.routePath;
-    r.id = key.toString(36);
-    state.runs.push(r);
+    delete r.routePath; delete r.kind;
+    r.id = (list === state.rides ? 'b' : '') + key.toString(36);
+    list.push(r);
     return true;
   }
 
@@ -1233,10 +1242,10 @@
     if (xml) {
       setStatus('Scanning your health data…', 0);
       const scan = await scanHealthXml(await entryStream(file, xml), xml.usize, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p * .8));
-      const { others, extra } = scan, runs = combineRuns(scan.runs);
-      enrichRuns(runs, extra);
+      const { others, extra } = scan, runs = combineRuns(scan.runs), rides = combineRuns(scan.rides);
+      enrichRuns(runs, extra); enrichRuns(rides, extra);
       const healthDays = finalizeHealth(extra.health, extra);
-      const withRoutes = runs.filter(r => r.routePath);
+      const withRoutes = [...runs, ...rides].filter(r => r.routePath);
       let i = 0;
       for (const r of withRoutes) {
         i++;
@@ -1251,30 +1260,32 @@
           }
         } catch {}
       }
-      let added = 0;
+      let added = 0, ridesNew = 0;
       for (const r of runs) if (addRun(r)) added++;
-      return { added, found: runs.length, others, routes: runs.filter(r => r.route).length, healthDays };
+      for (const r of rides) if (addRide(r)) ridesNew++;
+      return { added, found: runs.length, others, routes: runs.filter(r => r.route).length, healthDays, rides: rides.length, ridesNew };
     }
     const csv = entries.find(e => /(^|\/)activities\.csv$/i.test(e.name));
     if (csv || entries.some(e => /(^|\/)activities\/[^/]+\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name))) return importStravaZip(file, entries, csv);
     const files = entries.filter(e => /\.(gpx|tcx|fit)(\.gz)?$/i.test(e.name) && !/(^|\/)\._/.test(e.name));
     if (!files.length) throw new Error('That .zip has no Apple Health export, Strava archive, or GPX/TCX/FIT files in it.');
-    let added = 0, found = 0, routes = 0, others = 0;
+    let added = 0, found = 0, routes = 0, others = 0, rides = 0, ridesNew = 0;
     for (const [i, e] of files.entries()) {
       setStatus(`Reading activities… ${i + 1} of ${files.length}`, (i + 1) / files.length);
       try {
         const act = await readActivity(e.name, await entryStream(file, e));
         if (!act) continue;
+        if (isBikeSport(act.sport)) { const r = runFromTrack(act, sourceOf(act)); if (r) { rides++; if (addRide(r)) ridesNew++; } continue; }
         if (!isRunSport(act.sport)) { others++; continue; }
         const r = runFromTrack(act, sourceOf(act));
         if (r) { found++; if (r.route) routes++; if (addRun(r)) added++; }
       } catch {}
     }
-    return { added, found, others, routes };
+    return { added, found, others, routes, rides, ridesNew };
   }
 
   async function importFiles(files) {
-    const totals = { added: 0, found: 0, others: 0, routes: 0, healthDays: 0 }, skipped = [];
+    const totals = { added: 0, found: 0, others: 0, routes: 0, healthDays: 0, rides: 0, ridesNew: 0 }, skipped = [];
     for (const f of files) {
       const n = f.name.toLowerCase();
       let res = null;
@@ -1282,15 +1293,17 @@
       else if (n.endsWith('.xml')) {
         setStatus('Scanning your health data…', 0);
         const scan = await scanHealthXml(f.stream(), f.size, p => setStatus(`Scanning your health data… ${Math.round(p * 100)}%`, p));
-        const { others, extra } = scan, runs = combineRuns(scan.runs);
-        enrichRuns(runs, extra);
+        const { others, extra } = scan, runs = combineRuns(scan.runs), rides = combineRuns(scan.rides);
+        enrichRuns(runs, extra); enrichRuns(rides, extra);
         const healthDays = finalizeHealth(extra.health, extra);
-        let added = 0; for (const r of runs) if (addRun(r)) added++;
-        res = { added, found: runs.length, others, routes: 0, healthDays };
+        let added = 0, ridesNew = 0; for (const r of runs) if (addRun(r)) added++;
+        for (const r of rides) if (addRide(r)) ridesNew++;
+        res = { added, found: runs.length, others, routes: 0, healthDays, rides: rides.length, ridesNew };
       } else if (/\.(gpx|tcx|fit)(\.gz)?$/.test(n)) {
         const act = await readActivity(f.name, f.stream());
         const r = act && runFromTrack(act, sourceOf(act));
-        res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: r.route ? 1 : 0 } : { added: 0, found: 0, others: 0, routes: 0 };
+        if (r && isBikeSport(act.sport)) res = { rides: 1, ridesNew: addRide(r) ? 1 : 0 };
+        else res = r ? { added: addRun(r) ? 1 : 0, found: 1, others: 0, routes: r.route ? 1 : 0 } : { added: 0, found: 0, others: 0, routes: 0 };
       } else skipped.push(f.name);
       if (res) for (const k in totals) totals[k] += res[k] || 0;
     }
@@ -1518,7 +1531,7 @@
     { key: '10k', name: '10 km', m: 10000 }, { key: 'half', name: 'Half marathon', m: 21097.5 }, { key: 'full', name: 'Marathon', m: 42195 }
   ];
   // Fastest time to cover D metres anywhere in the run (sliding window over the distance/time profile).
-  function bestEffort(prof, D) {
+  function bestEffort(prof, D, minSecPerKm = 150) {
     if (!prof || prof.length < 2 || prof[prof.length - 1][0] < D * 0.999) return null;
     let best = Infinity, j = 0;
     for (let i = 1; i < prof.length; i++) {
@@ -1528,7 +1541,7 @@
       const ts = t0 + (d1 > d0 ? (target - d0) / (d1 - d0) : 0) * (t1 - t0);
       if (prof[i][1] - ts > 0) best = Math.min(best, prof[i][1] - ts);
     }
-    return isFinite(best) && best / D * 1000 >= 150 ? best : null; // ignore GPS glitches faster than 2:30/km
+    return isFinite(best) && best / D * 1000 >= minSecPerKm ? best : null; // ignore GPS glitches (runs: faster than 2:30/km)
   }
   function recordsFor(D) {
     const out = [];
@@ -1573,7 +1586,7 @@
     state.cityBusy = true;
     let changed = false;
     try {
-      for (const r of [...state.runs].sort((a, b) => b.start - a.start)) {
+      for (const r of [...state.runs, ...(state.rides || [])].sort((a, b) => b.start - a.start)) {
         if (r.city !== undefined || !r.route || r.route.length < 2) continue;
         const p = r.route[Math.floor(r.route.length / 2)];
         const key = p[0].toFixed(2) + ',' + p[1].toFixed(2); // ~1 km: a rough point mid-route, never your start
@@ -1913,6 +1926,7 @@
   function routeFromHash() {
     const hs = location.hash;
     if (/^#run-/.test(hs)) return { sport: 'run', view: 'run' };
+    if (/^#ride-/.test(hs)) return { sport: 'bike', view: 'ride' };
     for (const [sport, s] of Object.entries(SPORTS)) {
       for (const [view, , hash] of s.tabs) if (hash && hash === hs) return { sport, view };
       for (const [view, hash] of s.sub || []) if (hash === hs) return { sport, view };
@@ -2212,6 +2226,7 @@
 
   const DAY_KINDS = { run: { label: 'Run', icon: 'run' }, bike: { label: 'Bike', icon: 'bike' }, swim: { label: 'Swim', icon: 'swim' }, rest: { label: 'Rest day', short: 'Rest' } };
   const kindIcon = (k, s = 13) => !DAY_KINDS[k] ? '' : `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${k === 'rest' ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>' : ICONS[DAY_KINDS[k].icon]}</svg>`;
+  const ridesOn = k => (state.rides || []).filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   const runsOn = k => state.runs.filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   function renderWorkout(view) {
     $('footer').hidden = true;
@@ -2236,7 +2251,7 @@
         ${'<div class="cal-blank"></div>'.repeat(lead)}
         ${monthKeys.map((k, i) => {
           const x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x];
-          const did = doneOn(k).length || (x === 'run' && runsOn(k).length);
+          const did = doneOn(k).length || (x === 'run' && runsOn(k).length) || (x === 'bike' && ridesOn(k).length);
           const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', kd && x !== 'rest' ? 'sport k-' + x : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
           return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : kd ? ': ' + kd.label : ''}">
             <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}</button>`;
@@ -2251,8 +2266,9 @@
       ${p && k === todayK && !state.live ? `<div style="padding:0 14px"><button type="button" class="wide-btn primary" data-start="${p.id}">Start ${esc(p.name)}</button></div>` : ''}
       ${p ? `<div class="dp-wo"><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small></div><div class="dex">${presetBody(p, 'd' + k)}</div>`
           : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>`
-          : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : `<small>${kd.label} tracking is coming soon.</small>`}</div>
-              ${x === 'run' ? runsOn(k).map(r => `<a class="dlink donerun" href="#run-${r.id}" data-id="${r.id}"><span>✓ Completed run<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${fmtDist(r.distance)} ${state.unit}<small>${fmtDur(r.duration)}</small></b></a>`).join('') : ''}`
+          : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : x === 'bike' ? (ridesOn(k).length ? '' : `<small>${k < todayK ? 'No ride recorded this day.' : 'Planned ride day.'}</small>`) : `<small>${kd.label} tracking is coming soon.</small>`}</div>
+              ${x === 'run' ? runsOn(k).map(r => `<a class="dlink donerun" href="#run-${r.id}" data-id="${r.id}"><span>✓ Completed run<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${fmtDist(r.distance)} ${state.unit}<small>${fmtDur(r.duration)}</small></b></a>`).join('') : ''}
+              ${x === 'bike' ? ridesOn(k).map(r => `<a class="dlink donerun" href="#ride-${r.id}" data-id="${r.id}"><span>✓ ${r.indoor ? 'Indoor' : 'Outdoor'} ride<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${!r.indoor && r.distance ? fmtDist(r.distance) + ' ' + state.unit : fmtDur(r.duration)}<small>${!r.indoor && r.distance ? fmtDur(r.duration) : r.hr ? 'avg ' + r.hr + ' bpm' : ''}</small></b></a>`).join('') : ''}`
           : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick something below.</div>`}
       <div class="picker">
         <div class="pk-h">${p || kd ? 'Change to' : 'Plan this day'}</div>
@@ -2694,6 +2710,109 @@
     wireCharts();
   }
 
+  /* ---------- Bike: indoor + outdoor rides ---------- */
+  const spd = (m, s) => m && s ? (m / M_PER[state.unit]) / (s / 3600) : 0;
+  const spdU = () => state.unit === 'km' ? 'km/h' : 'mph';
+  function renderBike(view) {
+    $('footer').hidden = true;
+    const rides = [...(state.rides || [])].sort((a, b) => b.start - a.start);
+    if (view === 'ride') { const r = rides.find(x => '#ride-' + x.id === location.hash); return r ? renderRide(r) : goHash('#bike'); }
+    state.shownRun = null;
+    if (view === 'plan') { $('content').innerHTML = comingSoon('bike', 'Plan a ride', 'Draw a bike route on the map and see its distance, just like planning a run.'); return; }
+    if (view === 'records') return renderBikeRecords(rides);
+    if (!rides.length) {
+      $('content').innerHTML = periodHtml([], [], 'Ride') + `<h2>Rides</h2>` + comingSoon('bike', 'No rides yet', 'Record a ride with your watch (indoor or outdoor cycling), then tap <b>Import</b> and pick your Apple Health export.zip. Strava ride files work too.').replace('<div class="soon-tag">Coming soon</div>', '');
+      wireWeek(); return;
+    }
+    const shown = periodRuns(rides);
+    const totalTime = shown.reduce((s, r) => s + (r.duration || 0), 0);
+    let html = periodHtml(rides, shown, 'Ride') + `<div class="note" style="margin:-2px 2px 4px;text-align:center">${fmtDur(totalTime) === '–' ? '' : `Total time ${fmtDur(totalTime)} · `}${shown.filter(r => r.indoor).length} indoor · ${shown.filter(r => !r.indoor).length} outdoor</div>`;
+    html += `<h2>${state.period === 'all' ? 'All rides' : 'Rides ' + (state.periodOffset === 0 ? PERIOD_NAMES[state.period] : 'in this ' + state.period)}</h2>`;
+    if (!shown.length) html += `<div class="note" style="margin:0 2px 8px">No rides in this ${state.period}.</div>`;
+    for (const r of shown) {
+      const out = !r.indoor && r.distance > 0;
+      html += `<a class="run" href="#ride-${r.id}" data-id="${r.id}"><div class="top"><div class="info">
+          <div class="when">${esc(fmtDate(r.start))}${r.city ? ' · ' + esc(r.city) : ''} <span class="badge ${r.indoor ? '' : 'out'}">${r.indoor ? 'Indoor' : 'Outdoor'}</span>${r.hrBySrc && r.hrBySrc.polar ? '<span class="badge polar">Polar HR</span>' : ''}</div>
+          <div class="dist">${out ? fmtDist(r.distance) + `<small>${state.unit}</small>` : fmtDur(r.duration) + '<small>time</small>'}</div>
+          <div class="stats">
+            ${out ? `<div class="stat"><div class="k">Time</div><div class="v">${fmtDur(r.duration)}</div></div><div class="stat"><div class="k">${spdU()}</div><div class="v">${spd(r.distance, r.duration).toFixed(1)}</div></div>` : ''}
+            <div class="stat"><div class="k">Avg HR</div><div class="v">${hrOf(r).avg || '–'}</div></div>
+            <div class="stat"><div class="k">kcal</div><div class="v">${r.kcal || '–'}</div></div>
+          </div></div>
+          <div class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div></div></a>`;
+    }
+    $('content').innerHTML = html;
+    wireWeek();
+    if (state.listScroll != null) { window.scrollTo(0, state.listScroll); state.listScroll = null; }
+  }
+  function renderRide(r) {
+    const U = state.unit, same = state.shownRun === r.id, y = window.scrollY, out = !r.indoor && r.distance > 0, hrNow = hrOf(r);
+    let html = `<div class="runpage">
+      <button class="back" id="backBtn" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Rides</button>
+      ${r.name ? `<div class="rname">${esc(r.name)}</div>` : ''}
+      <div class="when">${esc(fmtDate(r.start))} <span class="badge ${r.indoor ? '' : 'out'}">${r.indoor ? 'Indoor ride' : 'Outdoor ride'}</span></div>
+      ${r.city ? `<div class="city"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>${esc(r.city)}</div>` : ''}
+      <div class="dist big">${out ? fmtDist(r.distance) + `<small>${U}</small>` : fmtDur(r.duration) + '<small>time</small>'}</div>`;
+    if (r.route && r.route.length > 1) html += `<div class="bigmap" data-map="${r.id}">${routeSvg(r.route, 400, 300, { pad: 22, stroke: 3, grid: true, marker: 5.5 })}</div>
+      <div class="legend"><span><i style="background:var(--go)"></i>Start</span><span><i style="border:2px solid var(--accent2);width:7px;height:7px"></i>Finish</span></div>`;
+    let maxSpd = 0;
+    const ps = r.prof && r.prof.length > 3 ? paceSeriesOf(r.prof, M_PER[U], 51, 900).map(([x, p]) => [x, 3600 / p]) : []; // 4–70 km/h
+    if (ps.length) maxSpd = Math.max(...ps.map(p => p[1]));
+    const tile = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    html += `<div class="grid">${[
+      out && tile('Distance', fmtDist(r.distance) + ' ' + U), tile('Time', fmtDur(r.duration)),
+      out && tile('Avg speed', spd(r.distance, r.duration).toFixed(1) + ' ' + spdU()), maxSpd && tile('Top speed', maxSpd.toFixed(1) + ' ' + spdU()),
+      tile('Avg HR' + (hrNow.pick === 'polar' ? ' · Polar' : ''), hrNow.avg ? hrNow.avg + ' bpm' : '–'), tile('Max HR' + (hrNow.pick === 'polar' ? ' · Polar' : ''), hrNow.max ? hrNow.max + ' bpm' : '–'),
+      tile('Calories', r.kcal ? r.kcal + ' kcal' : '–'), r.kcal && r.duration && tile('kcal / hour', Math.round(r.kcal / (r.duration / 3600)))
+    ].filter(Boolean).join('')}</div>`;
+    if (r.indoor) html += `<div class="note">Indoor ride: your watch records time, heart rate and calories. Distance, speed and cadence would need a bike or sensor that measures them.</div>`;
+    if (ps.length > 5) html += `<div class="sec"><h3>Speed</h3>` + lineChart('spd-' + r.id, ps, {
+      label: 'Speed over distance', color: '#7fd3f0', area: true,
+      yTicks: (lo, hi) => niceTicks(Math.max(0, lo - 3), hi + 3, 3), yFmt: v => Math.round(v),
+      xTicks: (a, b) => niceTicks(a, b, 4), xFmt: v => (+v.toFixed(1)) + ' ' + U,
+      tip: p => `<b>${p[1].toFixed(1)} ${spdU()}</b><span>at ${p[0].toFixed(2)} ${U}</span>`
+    }) + `</div>`;
+    const hrSw = hrNow.keys.length > 1 ? `<div class="seg hrsw" role="group" aria-label="Heart rate source">${hrNow.keys.map(k => `<button type="button" data-hrpick="${k}" aria-pressed="${k === hrNow.pick}">${k === 'polar' ? 'Polar' : 'Watch'}</button>`).join('')}</div>` : '';
+    html += `<div class="sec"><div class="sechead"><h3>Heart rate</h3>${hrSw}</div>`;
+    if (hrNow.series && hrNow.series.length > 3) html += lineChart('rhr-' + r.id, hrNow.series, {
+      label: 'Heart rate over time', color: '#ff5a5f', area: true,
+      yTicks: (lo, hi) => niceTicks(Math.max(40, lo - 5), hi + 5, 4), yFmt: v => Math.round(v),
+      xTicks: niceTimeTicks, xFmt: v => Math.round(v / 60) + ' min',
+      tip: p => `<b>${p[1]} bpm</b><span>at ${mmss(p[0])}</span>`
+    }) + `<div class="note">From ${esc(hrNow.from || 'your watch')}.</div>` + zonesHtml(hrNow.series);
+    else html += `<div class="note">No heart-rate readings found for this ride.</div>`;
+    html += `</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+      <span style="font-size:12px;color:var(--muted)">Source: ${esc(r.source)}</span>
+      <button class="del" id="delRide" type="button">Remove this ride</button></div></div>`;
+    $('content').innerHTML = html;
+    const back = () => state.cameFromList ? history.back() : goHash('#bike');
+    $('backBtn').onclick = back;
+    $('delRide').onclick = () => { const b = $('delRide'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Tap again to remove'; return; } state.rides = state.rides.filter(x => x.id !== r.id); save(); back(); };
+    document.querySelectorAll('[data-hrpick]').forEach(b => b.onclick = () => { r.hrPick = b.dataset.hrpick; const c = hrOf(r); r.hr = c.avg; r.hrMax = c.max; save(); render(); });
+    state.shownRun = r.id;
+    window.scrollTo(0, same ? y : 0);
+    wireCharts(); initMaps();
+  }
+  function renderBikeRecords(rides) {
+    const U = state.unit;
+    const row = (r, i, val, sub) => `<a class="rec-row" href="#ride-${r.id}"><span class="rk${i === 0 ? ' gold' : ''}">${i + 1}</span>
+      <span class="rd">${esc(new Date(r.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}${r.city ? ' · ' + esc(r.city) : ''}<small>${sub}</small></span><span class="rt">${val}</span></a>`;
+    const card = (title, list, val, sub, empty) => `<div class="rec"><div class="rec-h"><span>${title}</span>${list[0] ? `<b>${val(list[0])}</b>` : ''}</div>${list.length ? list.map((x, i) => row(x.r || x, i, val(x), sub(x))).join('') : `<div class="note">${empty}</div>`}</div>`;
+    const outdoor = rides.filter(r => !r.indoor && r.distance > 0);
+    let html = `<h2>Personal records</h2>`;
+    if (!rides.length) { $('content').innerHTML = html + `<div class="empty"><div class="big">No rides yet</div>Your best rides will show up here once you import some.</div>`; return; }
+    html += card('Longest ride', [...outdoor].sort((a, b) => b.distance - a.distance).slice(0, 5), r => fmtDist(r.distance) + ' ' + U, r => fmtDur(r.duration) + ' · ' + spd(r.distance, r.duration).toFixed(1) + ' ' + spdU(), 'No outdoor rides yet.');
+    html += card('Longest time', [...rides].sort((a, b) => b.duration - a.duration).slice(0, 5), r => fmtDur(r.duration), r => (r.indoor ? 'Indoor' : 'Outdoor') + (r.hr ? ' · avg ' + r.hr + ' bpm' : ''), '');
+    html += card('Fastest average speed', outdoor.filter(r => r.distance >= 5000).sort((a, b) => spd(b.distance, b.duration) - spd(a.distance, a.duration)).slice(0, 5), r => spd(r.distance, r.duration).toFixed(1) + ' ' + spdU(), r => fmtDist(r.distance) + ' ' + U + ' in ' + fmtDur(r.duration), 'Needs an outdoor ride of 5 km or more.');
+    for (const [nm, m] of [['10 km', 10000], ['20 km', 20000], ['40 km', 40000]]) {
+      const list = outdoor.map(r => ({ r, t: bestEffort(r.prof, m, 51) })).filter(x => x.t).sort((a, b) => a.t - b.t).slice(0, 5);
+      if (list.length || m <= 20000) html += card('Fastest ' + nm, list, x => fmtDur(x.t), x => (m / M_PER[U] / (x.t / 3600)).toFixed(1) + ' ' + spdU() + ' average', `No outdoor ride of ${nm} yet.`);
+    }
+    html += card('Most calories', rides.filter(r => r.kcal).sort((a, b) => b.kcal - a.kcal).slice(0, 5), r => r.kcal + ' kcal', r => fmtDur(r.duration) + ' · ' + (r.indoor ? 'Indoor' : 'Outdoor'), 'No calorie data yet.');
+    $('content').innerHTML = html;
+    if (state.listScroll != null) { window.scrollTo(0, state.listScroll); state.listScroll = null; }
+  }
+
   /* ---------- Sleep: one night at a time ---------- */
   const STAGES = [['awake', 'Awake', '#d9d0ff'], ['rem', 'REM', '#a690ff'], ['core', 'Core', '#7d63e6'], ['deep', 'Deep', '#5e45c4']];
   function hypnogram(key, n) {
@@ -2798,12 +2917,13 @@
     const id = currentRunId(), run = id && state.runs.find(r => r.id === id);
     let { sport, view } = routeFromHash();
     if (view === 'run' && !run) view = 'runs';
-    document.body.classList.toggle('in-run', view === 'run');
+    document.body.classList.toggle('in-run', view === 'run' || view === 'ride');
     document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim' || sport === 'workout');
     renderNavs(sport, view);
     destroyMaps();
     if (sport === 'health') { state.shownRun = null; return view === 'sleep' ? renderSleep() : view === 'day' ? renderDay() : renderHealth(); }
     if (sport === 'workout') { state.shownRun = null; return renderWorkout(view); }
+    if (sport === 'bike') return renderBike(view);
     if (sport !== 'run') { state.shownRun = null; return renderOther(sport, view); }
     if (view === 'run') return renderRun(run);
     state.shownRun = null;
@@ -2873,7 +2993,7 @@
     if (state.cameFromList) history.back();
     else { history.replaceState(null, '', location.pathname + location.search); render(); }
   }
-  window.addEventListener('hashchange', () => { if (!currentRunId()) state.cameFromList = false; render(); });
+  window.addEventListener('hashchange', () => { if (!/^#(run|ride)-/.test(location.hash)) state.cameFromList = false; render(); });
 
   function wireInventory() {
     const d = document.querySelector('details.inv');
@@ -2894,7 +3014,7 @@
   function initMaps() {
     if (typeof L === 'undefined') return; // no internet / blocked: keep the drawn route shape
     document.querySelectorAll('.bigmap[data-map]').forEach(el => {
-      const r = state.runs.find(x => x.id === el.dataset.map);
+      const r = state.runs.find(x => x.id === el.dataset.map) || (state.rides || []).find(x => x.id === el.dataset.map);
       if (!r || !r.route || r.route.length < 2) return;
       el.innerHTML = '';
       // Give the map a real pixel height before Leaflet measures it (iPhone Safari can report 0 here)
@@ -2958,7 +3078,7 @@
     if (rem > unitM * 0.05 && last[1] > prevT) out.push({ n: k, dist: rem, sec: last[1] - prevT, partial: true });
     return out;
   }
-  function paceSeriesOf(prof, unitM) {
+  function paceSeriesOf(prof, unitM, minPerKm = 150, maxPerKm = 1200) {
     const out = [];
     let j = 0;
     for (let i = 1; i < prof.length; i++) {
@@ -2966,7 +3086,7 @@
       const dd = prof[i][0] - prof[j][0], dt = prof[i][1] - prof[j][1];
       if (dd < 100 || dt <= 0) continue;
       const pace = dt / dd * unitM, perKm = dt / dd * 1000;
-      if (perKm < 150 || perKm > 1200) continue;
+      if (perKm < minPerKm || perKm > maxPerKm) continue;
       out.push([prof[i][0] / unitM, pace]);
     }
     return out;
@@ -3146,12 +3266,13 @@
       const res = await importFiles(files);
       const saved = save();
       let t;
-      if (!res.found) t = res.healthDays ? 'No runs in that file.' : res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
+      if (!res.found) t = res.healthDays || res.rides ? 'No runs in that file.' : res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
       else t = `Found ${res.found} run${res.found === 1 ? '' : 's'}${res.routes ? ` (${res.routes} with routes)` : ''}. ${res.added} new${res.found - res.added ? `, ${res.found - res.added} already here` : ''}.`;
+      if (res.rides) t += ` Bike rides: ${res.rides} found, ${res.ridesNew} new.`;
       if (res.healthDays) t += ` Health data updated for ${res.healthDays.toLocaleString()} day${res.healthDays === 1 ? '' : 's'}.`;
       if (res.skipped.length) t += ` Skipped: ${res.skipped.map(esc).join(', ')}.`;
       if (!saved) t += ' Note: too much data to save on this device, so these will disappear when you close the page.';
-      showMsg(t, !res.found && !res.healthDays);
+      showMsg(t, !res.found && !res.healthDays && !res.rides);
     } catch (err) {
       showMsg(esc(err.message || 'Something went wrong reading that file.'), true);
     } finally {
