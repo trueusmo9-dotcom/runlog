@@ -532,7 +532,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v32<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v33<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -555,6 +555,7 @@
       r.route = r.route.map(p => roundPt(fixPt(p))); repaired = true;
     }
     for (const r of state.runs) if (r.hrBySrc && r.hrSeries) { delete r.hrSeries; repaired = true; }
+    if (classifyRides()) repaired = true;
     if (repaired) save();
     try { state.unit = localStorage.getItem(UNIT_KEY) === 'mi' ? 'mi' : 'km'; } catch {}
     try { localStorage.removeItem(INV_KEY); } catch {}
@@ -1233,6 +1234,16 @@
 
   /* ---------- adding runs ---------- */
   const addRide = r => addRun(r, state.rides);
+  // A ride with no GPS route and no real distance was on a stationary/spin bike, even if the watch didn't tag it indoor.
+  // Rides you switched yourself (indoorSet) are left alone.
+  function classifyRides() {
+    let changed = false;
+    for (const r of state.rides || []) {
+      if (r.indoorSet || r.indoor) continue;
+      if ((!r.route || r.route.length < 2) && !(r.distance > 200)) { r.indoor = true; changed = true; }
+    }
+    return changed;
+  }
   function addRun(r, list) {
     list = list || state.runs;
     if (!isFinite(r.start)) return false;
@@ -2965,7 +2976,8 @@
     let html = `<div class="runpage">
       <button class="back" id="backBtn" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Rides</button>
       ${r.name ? `<div class="rname">${esc(r.name)}</div>` : ''}
-      <div class="when">${esc(fmtDate(r.start))} <span class="badge ${r.indoor ? '' : 'out'}">${r.indoor ? 'Indoor ride' : 'Outdoor ride'}</span></div>
+      <div class="when">${esc(fmtDate(r.start))} <span class="badge ${r.indoor ? '' : 'out'}">${r.indoor ? 'Indoor ride' : 'Outdoor ride'}</span>
+        <span class="seg hrsw" role="group" aria-label="Ride type" style="margin-left:auto">${['indoor', 'outdoor'].map(t => `<button type="button" data-ridetype="${t}" aria-pressed="${(t === 'indoor') === !!r.indoor}">${t === 'indoor' ? 'Indoor' : 'Outdoor'}</button>`).join('')}</span></div>
       ${r.city ? `<div class="city"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>${esc(r.city)}</div>` : ''}
       <div class="dist big">${out ? fmtDist(r.distance) + `<small>${U}</small>` : fmtDur(r.duration) + '<small>time</small>'}</div>`;
     if (r.route && r.route.length > 1) html += `<div class="bigmap" data-map="${r.id}">${routeSvg(r.route, 400, 300, { pad: 22, stroke: 3, grid: true, marker: 5.5 })}</div>
@@ -3002,6 +3014,7 @@
     $('content').innerHTML = html;
     const back = () => state.cameFromList ? history.back() : goHash('#bike');
     $('backBtn').onclick = back;
+    document.querySelectorAll('[data-ridetype]').forEach(b => b.onclick = () => { r.indoor = b.dataset.ridetype === 'indoor'; r.indoorSet = true; save(); render(); });
     $('delRide').onclick = () => { const b = $('delRide'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Tap again to remove'; return; } state.rides = state.rides.filter(x => x.id !== r.id); save(); back(); };
     document.querySelectorAll('[data-hrpick]').forEach(b => b.onclick = () => { r.hrPick = b.dataset.hrpick; const c = hrOf(r); r.hr = c.avg; r.hrMax = c.max; save(); render(); });
     state.shownRun = r.id;
@@ -3480,6 +3493,7 @@
     $('importBtn').disabled = true; showMsg('');
     try {
       const res = await importFiles(files);
+      classifyRides();
       const saved = save();
       let t;
       if (!res.found) t = res.healthDays || res.rides ? 'No runs in that file.' : res.others ? `No runs found — the file had ${res.others} other workouts, but none were runs. Check that the CMF Watch app is syncing runs to Apple Health.` : 'No runs were found in that file.';
