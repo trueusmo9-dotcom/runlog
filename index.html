@@ -309,6 +309,8 @@
   .vidwrap{position:relative;width:100%;aspect-ratio:16/9;margin:6px 0 8px;border-radius:10px;overflow:hidden;background:#000}
   .ytopen{font-size:12px;margin:-2px 0 8px;align-self:flex-start}
   .vidwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .vidwrap.ig{aspect-ratio:auto;height:min(150vw,640px);max-width:400px;background:#fff}
+  .vidbtn.ig{color:#f5a3d4;border-color:#5a2a4a}
   .ex-vid{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 2px}
   .wo-form .ex-row .ex-url{flex:1;min-width:160px;font-size:14px;padding:7px 8px}
   .yts{font-size:12.5px}
@@ -524,7 +526,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v29<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v30<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2228,12 +2230,30 @@
     const m = String(u).trim().match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/|v\/))([A-Za-z0-9_-]{11})/);
     return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(String(u).trim()) ? String(u).trim() : null);
   }
+  // Instagram reel / post links: instagram.com/reel/CODE, /reels/CODE, /p/CODE, /tv/CODE (any ?igsh=… share suffix is ignored)
+  function igInfo(u) {
+    const m = String(u || '').trim().match(/(?:instagram\.com|instagr\.am)\/(?:[A-Za-z0-9_.]+\/)?(reels?|p|tv)\/([A-Za-z0-9_-]{5,})/i);
+    if (!m) return null;
+    const t = /^reel/i.test(m[1]) ? 'reel' : m[1].toLowerCase();
+    return { code: m[2], url: `https://www.instagram.com/${t}/${m[2]}/`, embed: `https://www.instagram.com/${t}/${m[2]}/embed/` };
+  }
+  // What kind of video link this is: YouTube (plays here) or Instagram (plays here when the reel is public, else opens Instagram)
+  function vidInfo(u) {
+    const y = ytId(u); if (y) return { kind: 'yt', id: y };
+    const g = igInfo(u); if (g) return { kind: 'ig', ...g };
+    return null;
+  }
+  const vidStatus = u => !String(u || '').trim() ? '' : (v => v ? (v.kind === 'ig' ? '✓ Instagram reel linked' : '✓ YouTube video linked') : 'Not a YouTube or Instagram link')(vidInfo(u));
   const ytSearch = name => `https://www.youtube.com/results?search_query=${encodeURIComponent('how to ' + (name || 'exercise') + ' proper form')}`;
   // An exercise line, with a "How to" button when a video is linked; the player opens inline.
   function exItem(ex, key) {
-    const lib = libByName(ex.name), id = ytId((lib && lib.video) || ex.video), open = state.vidOpen === key;
-    return `<div class="exi"><div class="exl">${exLine(ex)}${id ? `<button type="button" class="vidbtn${open ? ' on' : ''}" data-vid="${esc(key)}">${open ? '✕ Close' : '▶ How to'}</button>` : ''}</div>
-      ${id && open ? `<div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1&modestbranding=1" title="${esc(ex.name)} – how to" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div><a class="linkbtn ytopen" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Video won’t play? Open in YouTube</a>` : ''}</div>`;
+    const lib = libByName(ex.name), v = vidInfo((lib && lib.video) || ex.video), open = state.vidOpen === key, ig = v && v.kind === 'ig';
+    const btn = v ? `<button type="button" class="vidbtn${ig ? ' ig' : ''}${open ? ' on' : ''}" data-vid="${esc(key)}">${open ? '✕ Close' : ig ? '▶ Watch reel' : '▶ How to'}</button>` : '';
+    let player = '';
+    if (v && open) player = ig
+      ? `<div class="vidwrap ig"><iframe src="${v.embed}" title="${esc(ex.name)} – Instagram reel" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" scrolling="no"></iframe></div><a class="linkbtn ytopen" href="${v.url}" target="_blank" rel="noopener">Reel won’t load? Open in Instagram</a>`
+      : `<div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/${v.id}?rel=0&playsinline=1&modestbranding=1" title="${esc(ex.name)} – how to" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div><a class="linkbtn ytopen" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">Video won’t play? Open in YouTube</a>`;
+    return `<div class="exi"><div class="exl">${exLine(ex)}${btn}</div>${player}</div>`;
   }
   const wireVids = () => document.querySelectorAll('[data-vid]').forEach(b => b.onclick = e => { e.stopPropagation(); state.vidOpen = state.vidOpen === b.dataset.vid ? null : b.dataset.vid; render(); });
   const presetBody = (p, keyBase) => `${p.rest ? `<div class="restline">Rest ${fmtRest(p.rest)} between sets</div>` : ''}${p.ex.map((ex, i) => exItem(ex, keyBase + ':' + i)).join('')}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}`;
@@ -2348,9 +2368,9 @@
         <h3>${d.id ? 'Edit exercise' : 'New exercise'}</h3>
         <label>Exercise name<input id="exName" list="exList2" maxlength="50" placeholder="e.g. Bench press" value="${esc(d.name)}"></label>
         <datalist id="exList2">${EX_SUGGEST.filter(s => !libByName(s) || (d.id && libByName(s).id === d.id)).map(s => `<option value="${s}">`).join('')}</datalist>
-        <label>How-to video (YouTube link)<input id="exVideo" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link (optional)" value="${esc(d.video || '')}"></label>
-        <div class="exv-row"><a class="linkbtn" id="exSearch" href="${ytSearch(d.name)}" target="_blank" rel="noopener">Search YouTube for “how to ${esc(d.name || '…')}”</a><span class="vidok" id="exOk">${d.video ? (ytId(d.video) ? '✓ Video linked' : 'Not a YouTube link') : ''}</span></div>
-        <div class="note" style="margin:-2px 0 10px">Find a video, tap <b>Share → Copy link</b> in YouTube, then paste it here.</div>
+        <label>How-to video (YouTube or Instagram link)<input id="exVideo" inputmode="url" autocomplete="off" placeholder="Paste a YouTube or Instagram reel link (optional)" value="${esc(d.video || '')}"></label>
+        <div class="exv-row"><a class="linkbtn" id="exSearch" href="${ytSearch(d.name)}" target="_blank" rel="noopener">Search YouTube for “how to ${esc(d.name || '…')}”</a><span class="vidok" id="exOk">${vidStatus(d.video)}</span></div>
+        <div class="note" style="margin:-2px 0 10px">In YouTube or Instagram, tap <b>Share → Copy link</b> on the video or reel, then paste it here.</div>
         <label>Notes (optional)<input id="exNotes" maxlength="200" placeholder="e.g. Keep elbows at 45°" value="${esc(d.notes || '')}"></label>
         <div class="sheet-btns">${d.id ? `<button type="button" class="danger" id="exDelete">Delete</button>` : ''}<button type="button" id="exCancel">Cancel</button><button type="submit" class="primary">Save exercise</button></div>
       </form>`;
@@ -2369,7 +2389,7 @@
             ${sessions ? `<button type="button" class="linkbtn" data-lift="${esc(name)}">See progress ›</button>` : ''}</div>
           ${l ? `<button type="button" class="linkbtn" data-exedit="${l.id}">Edit</button>` : `<button type="button" class="linkbtn" data-exadd="${esc(name)}">Add video</button>`}</div>`;
       }).join('') + `</div>`;
-    } else if (!d) html += `<div class="empty"><div class="big">No exercises yet</div>Create an exercise once, add a YouTube how-to video to it, and the video shows up everywhere that exercise is used: in your workouts, the calendar, and during a workout.</div>`;
+    } else if (!d) html += `<div class="empty"><div class="big">No exercises yet</div>Create an exercise once, add a YouTube or Instagram how-to video to it, and the video shows up everywhere that exercise is used: in your workouts, the calendar, and during a workout.</div>`;
     $('content').innerHTML = html;
     wireVids();
     if ($('exNew')) $('exNew').onclick = () => { state.exDraft = { id: null, name: '', video: '', notes: '' }; render(); $('exName').focus(); };
@@ -2379,7 +2399,7 @@
     const f = $('exForm'); if (!f) return;
     f.addEventListener('input', e => {
       if (e.target.id === 'exName') { d.name = e.target.value; $('exSearch').href = ytSearch(d.name); $('exSearch').textContent = `Search YouTube for “how to ${d.name || '…'}”`; }
-      if (e.target.id === 'exVideo') { d.video = e.target.value; $('exOk').textContent = d.video.trim() ? (ytId(d.video) ? '✓ Video linked' : 'Not a YouTube link') : ''; }
+      if (e.target.id === 'exVideo') { d.video = e.target.value; $('exOk').textContent = vidStatus(d.video); }
       if (e.target.id === 'exNotes') d.notes = e.target.value;
     });
     $('exCancel').onclick = () => { state.exDraft = null; render(); };
