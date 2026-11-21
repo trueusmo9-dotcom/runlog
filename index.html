@@ -230,6 +230,7 @@
   .lv-exh{display:flex;align-items:flex-start;gap:6px}
   .lv-exh > div{flex:1;min-width:0;font:600 15px Inter}
   .lv-last{display:block;font:400 12px Inter;color:var(--muted);margin-top:3px}
+  .lv-note{color:#c9ced6;font-style:italic}
   .rt-edit.sure{width:auto;padding:0 10px;color:#ff8f8f;font:600 12px Inter}
   .lv-sets{margin-top:8px}
   .lv-sh,.lv-set{display:grid;grid-template-columns:34px 1fr 1fr 48px;gap:8px;align-items:center}
@@ -526,7 +527,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v30<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v31<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2257,7 +2258,7 @@
   }
   const wireVids = () => document.querySelectorAll('[data-vid]').forEach(b => b.onclick = e => { e.stopPropagation(); state.vidOpen = state.vidOpen === b.dataset.vid ? null : b.dataset.vid; render(); });
   const presetBody = (p, keyBase) => `${p.rest ? `<div class="restline">Rest ${fmtRest(p.rest)} between sets</div>` : ''}${p.ex.map((ex, i) => exItem(ex, keyBase + ':' + i)).join('')}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}`;
-  const exLine = ex => `${esc(ex.name || 'Exercise')} <span>${ex.sets || '–'} × ${esc(String(ex.reps || '–'))}${ex.w != null && ex.w !== '' ? ' @ ' + fmtWeight(ex) : ''}</span>`;
+  const exLine = ex => `${esc(ex.name || 'Exercise')} <span>${ex.sets || '–'} × ${esc(String(ex.reps || '–'))}${ex.w != null && ex.w !== '' ? ' @ ' + fmtWeight(ex) : ''}${ex.rest === 0 ? ' · superset ↓' : ex.rest ? ' · rest ' + fmtRest(ex.rest) : ''}</span>`;
   const presetById = id => wo.presets.find(p => p.id === id);
   const weekKey = off => dayKey(new Date(addWeeks(weekStart(Date.now()), off)));
 
@@ -2430,6 +2431,61 @@
     if (state.live) { state.live.ex.forEach(e => e.sets.forEach(fix)); try { localStorage.setItem(LIVE_KEY, JSON.stringify(state.live)); } catch {} }
     wo.lbFix = true; try { localStorage.setItem(WO_KEY, JSON.stringify(wo)); } catch {}
   }
+
+  /* ---------- Runner strength pack (added once): 3 workouts + exercises with how-to Shorts ---------- */
+  const RUNNER_PACK = {
+    library: [
+      { name: 'Leg press (feet low)', aka: ['leg press feet low'], video: 'https://www.youtube.com/shorts/kyB1_9-P-Po', notes: 'Feet low on the plate so knees travel over toes. Lower over 2 s.' },
+      { name: 'Split squat', aka: ['split squats', 'dumbbell split squat'], video: 'https://www.youtube.com/shorts/sEpgh4ZJwLo', notes: 'Dumbbells. Move to rear-foot-elevated (Bulgarian) once 8/leg feels solid.' },
+      { name: 'Leg extension', aka: ['leg extensions'], video: 'https://www.youtube.com/shorts/d3d2yz7V26c', notes: 'Back of knees against the seat, squeeze at the top, 2–3 s down.' },
+      { name: 'Lying hamstring curl', aka: ['lying hamstring curls', 'lying leg curl', 'lying leg curls', 'hamstring curl'], video: 'https://www.youtube.com/shorts/d6sg829PgNs', notes: 'Squeeze glutes to keep hips on the pad. Slow on the way down.' },
+      { name: 'Tib raises', aka: ['tib raise', 'tibialis raise', 'tibialis raises'], video: 'https://www.youtube.com/shorts/l18cBKqIFKw', notes: 'Back on a wall, toes all the way up. Build to 45 s sets, then add weight.' },
+      { name: 'Bent-knee single-leg calf raise', aka: ['soleus raise', 'bent knee calf raise', 'bent-knee calf raise'], video: 'https://www.youtube.com/shorts/oY-kO1pjnAQ', notes: 'Soleus. Keep the knee bent the whole rep, heel below the step.' },
+      { name: 'Assisted sissy squat', aka: ['sissy squat', 'sissy squats'], video: 'https://www.youtube.com/shorts/NJWQbnhdxgM', notes: 'Hold a post or rack. Start with a partial range, go deeper over the weeks.' },
+      { name: 'Slow step-down', aka: ['step-down', 'step down', 'eccentric step down', 'slow step-downs'], video: 'https://www.youtube.com/shorts/jAlqMQWY-oI', notes: '3 s down, knee tracks over the 2nd toe, hips level.' },
+      { name: 'Banded knee drive', aka: ['banded knee drives', 'hip flexor march', 'banded hip flexor march'], video: 'https://www.youtube.com/shorts/xlhHX5d7LyU', notes: 'Hip flexors. Tall posture, drive the knee to hip height like a running stride.' },
+      { name: 'Banded ankle eversion', aka: ['ankle eversion'], video: 'https://www.youtube.com/shorts/YIbmJoXpI6M', notes: 'Seated, push the foot out against the band. Left ankle: 1 extra set.' },
+      { name: 'Banded ankle inversion', aka: ['ankle inversion'], video: 'https://www.youtube.com/shorts/aWNL_G0V88Y', notes: 'Seated, pull the foot in against the band. Left ankle: 1 extra set.' },
+      { name: 'Heel walks + toe walks', aka: ['heel walks', 'heel walk', 'toe walks'], video: 'https://www.youtube.com/watch?v=6UvCOMrMX0M', notes: '20 m on heels (toes high), then 20 m back on toes. Targets the heavy-foot feeling.' },
+      { name: 'Single-leg calf raise (straight knee)', aka: ['single leg calf raise', 'single-leg calf raise', 'calf raise'], video: 'https://www.youtube.com/shorts/g3a-VzkmFYg', notes: 'Off a step, 3 s down, heel below the step. Left leg: 1 extra set.' },
+      { name: 'Single-leg RDL', aka: ['single leg rdl', 'single-leg romanian deadlift', 'single leg romanian deadlift'], video: 'https://www.youtube.com/shorts/qVhui08Jcy4', notes: 'Barefoot if allowed. Balance 30 s on each leg first; progress to eyes closed.' },
+      { name: 'Copenhagen plank', aka: ['copenhagen planks', 'copenhagen plank (short lever)'], video: 'https://www.youtube.com/shorts/Rwap0_j5i5A', notes: 'Short lever: knee on the bench to start. Time is per side.' }
+    ],
+    presets: [
+      { name: 'Runner strength A · Heavy legs', rest: 90, notes: 'Keep at least 48 h before a long run or hard workout.',
+        ex: [['Leg press (feet low)', 3, '8-10', 120], ['Split squat', 3, '8/leg', 90], ['Leg extension', 3, '10-12', 0], ['Lying hamstring curl', 3, '10-12', 75]] },
+      { name: 'Runner strength B · Knees & shins', rest: 60, notes: 'Light day, fine after an easy run. Rest Off = superset straight into the next exercise.',
+        ex: [['Tib raises', 3, '20', 0], ['Bent-knee single-leg calf raise', 3, '12/leg', 60], ['Assisted sissy squat', 3, '8-10', 60], ['Slow step-down', 3, '8/leg', 0], ['Banded knee drive', 3, '12/leg', 60]] },
+      { name: 'Runner strength C · Ankles, feet & hips', rest: 45, notes: 'Left ankle/leg gets 1 extra set on eversion, inversion and calf raises.',
+        ex: [['Banded ankle eversion', 3, '15/foot', 0], ['Banded ankle inversion', 3, '15/foot', 45], ['Heel walks + toe walks', 3, '20 m', 45], ['Single-leg calf raise (straight knee)', 3, '12/leg', 60], ['Single-leg RDL', 3, '8/leg', 60], ['Copenhagen plank', 3, '20 s', 45]] }
+    ]
+  };
+  if (!(wo.packs && wo.packs.runner1)) {
+    const norm = n => (n || '').trim().toLowerCase();
+    const known = new Map(); // existing names you already use, so history and videos stay together
+    wo.library.forEach(l => known.set(norm(l.name), l.name));
+    wo.log.forEach(l => l.ex.forEach(e => { if (!known.has(norm(e.name))) known.set(norm(e.name), e.name); }));
+    wo.presets.forEach(p => p.ex.forEach(e => { if (!known.has(norm(e.name))) known.set(norm(e.name), e.name); }));
+    const nameFor = {};
+    for (const it of RUNNER_PACK.library) {
+      const hit = [it.name, ...it.aka].map(norm).find(k => known.has(k));
+      const name = hit ? known.get(hit) : it.name;
+      nameFor[it.name] = name;
+      const lib = wo.library.find(l => norm(l.name) === norm(name));
+      if (lib) { if (!lib.video) lib.video = it.video; if (!lib.notes) lib.notes = it.notes; }
+      else wo.library.push({ id: newId(), name, video: it.video, notes: it.notes });
+    }
+    let added = 0;
+    for (const p of RUNNER_PACK.presets) {
+      if (wo.presets.some(x => norm(x.name) === norm(p.name))) continue;
+      wo.presets.push({ id: newId(), name: p.name, rest: p.rest, notes: p.notes,
+        ex: p.ex.map(([n, sets, reps, rest]) => ({ name: nameFor[n] || n, sets, reps, w: '', wu: 'lb', rest })) });
+      added++;
+    }
+    wo.packs = Object.assign(wo.packs || {}, { runner1: true });
+    try { localStorage.setItem(WO_KEY, JSON.stringify(wo)); } catch {}
+    if (added) state.packMsg = `Added ${added} runner strength workouts (A · Heavy legs, B · Knees & shins, C · Ankles, feet & hips) to <b>Workout → Workouts</b>, with how-to videos on every exercise.`;
+  }
   const saveLive = () => { try { state.live ? localStorage.setItem(LIVE_KEY, JSON.stringify(state.live)) : localStorage.removeItem(LIVE_KEY); } catch {} };
   const doneOn = k => wo.log.filter(l => dayKey(new Date(l.start)) === k);
   function startBtnHtml() {
@@ -2596,7 +2652,8 @@
       const lf = lastFirstSet(e.name), best = allTimeBest(e.name);
       html += `<div class="lv-ex">
         <div class="lv-exh"><div>${exItem({ name: e.name, sets: '', reps: '' }, 'lv' + ei).replace(/<span>[^<]*<\/span>/, '')}
-          ${e.target ? `<small class="lv-last">Target: ${esc(String(e.target))} reps</small>` : ''}
+          ${e.target ? `<small class="lv-last">Target: ${esc(String(e.target))}${/^\s*\d+\s*([-–]\s*\d+)?\s*$/.test(String(e.target)) ? ' reps' : ''}${e.rest === 0 ? ' · superset: go straight to the next exercise' : ''}</small>` : ''}
+          ${(l => l && l.notes ? `<small class="lv-last lv-note">${esc(l.notes)}</small>` : '')(libByName(e.name))}
           <label class="lv-exrest">Rest after each set <select data-exrest="${ei}">${restOpts(e.rest, true)}</select></label>
           ${lf || best ? `<div class="lv-track">${lf ? `<div><small>Last time, set 1</small><b>${fmtSet(lf)}</b><i>${esc(shortDate(lf.when))}</i></div>` : ''}${best ? `<div class="pr"><small>All-time best</small><b>${fmtSet(best)}</b><i>${esc(shortDate(best.when))}</i></div>` : ''}</div>`
             : `<small class="lv-last">First time logging this exercise.</small>`}</div>
@@ -2643,7 +2700,7 @@
     live.querySelectorAll('[data-done]').forEach(b => b.onclick = () => {
       const row = b.closest('.lv-set'), e = L.ex[+row.dataset.e], s = e.sets[+row.dataset.s];
       s.done = !s.done;
-      if (s.done && !s.reps && e.target) s.reps = String(e.target).split(/[-–]/)[0];
+      if (s.done && !s.reps && e.target) { const n = parseInt(String(e.target), 10); s.reps = isFinite(n) ? String(n) : String(e.target); }
       if (s.done) { const b0 = allTimeBest(e.name); if (b0 && toKg(s) > b0.kg + 1e-6) showMsg(`New all-time best on ${esc(e.name)}: ${fmtSet(s)} 🎉`); }
       const r = e.rest == null || e.rest === '' ? L.rest : +e.rest;
       if (s.done && r) startRest(r); else if (!s.done) stopRest();
@@ -3444,7 +3501,7 @@
   $('yesClear').onclick = () => { state.runs = []; state.open.clear(); state.inventory = null; try { localStorage.removeItem(INV_KEY); } catch {} save(); $('noClear').onclick(); showMsg(''); render(); };
 
   try { const sp = localStorage.getItem('runlog.sport'); if (!location.hash && sp && sp !== 'run' && SPORTS[sp]) history.replaceState(null, '', SPORTS[sp].tabs[0][2]); } catch {}
-  load(); render(); fillCities();
+  load(); render(); if (state.packMsg) { showMsg(state.packMsg); state.packMsg = null; } fillCities();
 })();
 </script>
 </body>
