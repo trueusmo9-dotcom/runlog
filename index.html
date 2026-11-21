@@ -286,6 +286,11 @@
   .cal-d{all:unset;cursor:pointer;box-sizing:border-box;min-height:58px;padding:5px 3px 4px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;-webkit-tap-highlight-color:transparent}
   .cal-d:active{background:var(--card2)}
   .cal-d .cn{font:700 15px var(--num)}
+  .cacts{display:flex;gap:2px;justify-content:center;margin-top:auto}
+  .cacts i{display:flex;width:15px;height:15px;border-radius:4px;align-items:center;justify-content:center;font-style:normal}
+  .ca-run{background:#5a3220;color:#ffb38f}.ca-bike{background:#1f4656;color:#7fd3f0}.ca-swim{background:#273a6b;color:#9db4ff}.ca-gym{background:#1f4d33;color:var(--go)}
+  .dlink.donerun span svg{vertical-align:-1px;margin-right:3px}
+  .dlink.donerun.bike span{color:#7fd3f0}.dlink.donerun.swim span{color:#9db4ff}
   .cal-d .cw{font:600 9.5px/1.15 Inter;text-align:center;width:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
   .cal-d.has{background:#2a1a12;border-color:#5a3220}
   .cal-d.has .cw{color:var(--accent2)}
@@ -527,7 +532,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v31<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v32<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -2266,6 +2271,16 @@
   const kindIcon = (k, s = 13) => !DAY_KINDS[k] ? '' : `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${k === 'rest' ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>' : ICONS[DAY_KINDS[k].icon]}</svg>`;
   const ridesOn = k => (state.rides || []).filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   const runsOn = k => state.runs.filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
+  const swimsOn = k => (state.swims || []).filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
+  // Everything you actually did on a day, planned or not: runs, rides, swims and logged gym workouts
+  const actsOn = k => [...runsOn(k).map(() => 'run'), ...ridesOn(k).map(() => 'bike'), ...swimsOn(k).map(() => 'swim'), ...doneOn(k).map(() => 'gym')];
+  const actIcon = a => `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONS[a === 'gym' ? 'workout' : a]}</svg>`;
+  const tClock = t => esc(new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+  function doneLinks(k) {
+    return runsOn(k).map(r => `<a class="dlink donerun" href="#run-${r.id}" data-id="${r.id}"><span>${actIcon('run')} Run${r.indoor ? ' · treadmill' : ''}<small>${tClock(r.start)}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${r.distance ? fmtDist(r.distance) + ' ' + state.unit : fmtDur(r.duration)}<small>${r.distance ? fmtDur(r.duration) : ''}</small></b></a>`).join('') +
+      ridesOn(k).map(r => `<a class="dlink donerun bike" href="#ride-${r.id}" data-id="${r.id}"><span>${actIcon('bike')} ${r.indoor ? 'Indoor' : 'Outdoor'} ride<small>${tClock(r.start)}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${!r.indoor && r.distance ? fmtDist(r.distance) + ' ' + state.unit : fmtDur(r.duration)}<small>${!r.indoor && r.distance ? fmtDur(r.duration) : r.hr ? 'avg ' + r.hr + ' bpm' : ''}</small></b></a>`).join('') +
+      swimsOn(k).map(r => `<div class="dlink donerun swim"><span>${actIcon('swim')} Swim<small>${tClock(r.start)}</small></span><b>${r.distance ? Math.round(r.distance) + ' m' : fmtDur(r.duration)}<small>${r.distance ? fmtDur(r.duration) : ''}</small></b></div>`).join('');
+  }
   function renderWorkout(view) {
     $('footer').hidden = true;
     if (view === 'presets') return renderPresets();
@@ -2281,7 +2296,7 @@
     const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
     let html = startBtnHtml() + `<div class="week slim" id="woMonthNav">
         <button class="wnav" type="button" id="mPrev" aria-label="Previous month">${arrow('M15 6l-6 6 6 6')}</button>
-        <div class="wmid"><div class="wlabel">${esc(m0.toLocaleDateString(undefined, { month: 'long' }))}</div><div class="wrange">${m0.getFullYear()} · ${planned} session${planned === 1 ? '' : 's'} planned</div></div>
+        <div class="wmid"><div class="wlabel">${esc(m0.toLocaleDateString(undefined, { month: 'long' }))}</div><div class="wrange">${m0.getFullYear()} · ${planned} planned · ${monthKeys.reduce((n, k) => n + actsOn(k).length, 0)} done</div></div>
         <button class="wnav" type="button" id="mNext" aria-label="Next month">${arrow('M9 6l6 6-6 6')}</button>
       </div>
       <div class="cal" role="grid" aria-label="Workout calendar">
@@ -2289,10 +2304,10 @@
         ${'<div class="cal-blank"></div>'.repeat(lead)}
         ${monthKeys.map((k, i) => {
           const x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x];
-          const did = doneOn(k).length || (x === 'run' && runsOn(k).length) || (x === 'bike' && ridesOn(k).length);
+          const acts = actsOn(k), did = acts.length > 0;
           const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', kd && x !== 'rest' ? 'sport k-' + x : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
           return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : kd ? ': ' + kd.label : ''}">
-            <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}</button>`;
+            <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}${acts.length ? `<span class="cacts">${[...new Set(acts)].map(a => `<i class="ca-${a}">${actIcon(a)}</i>`).join('')}</span>` : ''}</button>`;
         }).join('')}
       </div>`;
     // selected day
@@ -2301,13 +2316,13 @@
       <div class="dp-h"><b>${esc(dd.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</b>${k === todayK ? '<span class="badge">Today</span>' : ''}</div>
       ${doneOn(k).map(l => { const exd = l.ex.filter(e => e.sets.some(x => x.done)); return `<div class="donebox"><b>✓ Completed: ${esc(l.name)}</b><small>${fmtDur((l.end - l.start) / 1000)} · ${exd.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0)} sets · ${exd.length} exercise${exd.length === 1 ? '' : 's'}</small>
         <div class="dex">${exd.map(e => `<div class="exl">${esc(e.name)} <span>${e.sets.filter(x => x.done).map(x => (x.w !== '' && x.w != null ? fmtWeight({ w: x.w, wu: x.wu }).replace(' ' + wUnit(), '') + '×' : '') + (x.reps || '–')).join(', ')}</span></div>`).join('')}</div></div>`; }).join('')}
+      ${doneLinks(k)}
       ${p && k === todayK && !state.live ? `<div style="padding:0 14px"><button type="button" class="wide-btn primary" data-start="${p.id}">Start ${esc(p.name)}</button></div>` : ''}
       ${p ? `<div class="dp-wo"><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small></div><div class="dex">${presetBody(p, 'd' + k)}</div>`
           : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>`
-          : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : x === 'bike' ? (ridesOn(k).length ? '' : `<small>${k < todayK ? 'No ride recorded this day.' : 'Planned ride day.'}</small>`) : `<small>${kd.label} tracking is coming soon.</small>`}</div>
-              ${x === 'run' ? runsOn(k).map(r => `<a class="dlink donerun" href="#run-${r.id}" data-id="${r.id}"><span>✓ Completed run<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${fmtDist(r.distance)} ${state.unit}<small>${fmtDur(r.duration)}</small></b></a>`).join('') : ''}
-              ${x === 'bike' ? ridesOn(k).map(r => `<a class="dlink donerun" href="#ride-${r.id}" data-id="${r.id}"><span>✓ ${r.indoor ? 'Indoor' : 'Outdoor'} ride<small>${esc(new Date(r.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${r.city ? ' · ' + esc(r.city) : ''}</small></span><b>${!r.indoor && r.distance ? fmtDist(r.distance) + ' ' + state.unit : fmtDur(r.duration)}<small>${!r.indoor && r.distance ? fmtDur(r.duration) : r.hr ? 'avg ' + r.hr + ' bpm' : ''}</small></b></a>`).join('') : ''}`
-          : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick something below.</div>`}
+          : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : x === 'bike' ? (ridesOn(k).length ? '' : `<small>${k < todayK ? 'No ride recorded this day.' : 'Planned ride day.'}</small>`) : (swimsOn(k).length ? '' : `<small>${k < todayK ? 'No swim recorded this day.' : 'Planned swim day.'}</small>`)}</div>
+`
+          : actsOn(k).length ? '' : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick something below.</div>`}
       <div class="picker">
         <div class="pk-h">${p || kd ? 'Change to' : 'Plan this day'}</div>
         <div class="kinds">${['run', 'bike', 'swim', 'rest'].map(t => `<button type="button" class="kchip k-${t}${x === t ? ' on' : ''}" data-set="${t}">${kindIcon(t, 16)}<span>${DAY_KINDS[t].short || DAY_KINDS[t].label}</span></button>`).join('')}</div>
