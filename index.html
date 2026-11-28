@@ -286,6 +286,45 @@
   .cal-d{all:unset;cursor:pointer;box-sizing:border-box;min-height:58px;padding:5px 3px 4px;border-radius:10px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;-webkit-tap-highlight-color:transparent}
   .cal-d:active{background:var(--card2)}
   .cal-d .cn{font:700 15px var(--num)}
+  .ivstrip{display:flex;align-items:flex-end;gap:1px;height:34px;margin:8px 0 4px}
+  .ivstrip i{display:block;border-radius:2px 2px 0 0;min-width:2px}
+  .ivparts{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .ivpart small{display:block;font:600 10.5px Inter;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:2px}
+  .ivpart.main{border-left:2px solid var(--accent);padding-left:8px}
+  .ivseg{display:grid;grid-template-columns:1fr auto 44px;gap:8px;align-items:center;font-size:13.5px;padding:2px 0}
+  .ivseg b{font:600 15px var(--num);font-variant-numeric:tabular-nums}
+  .effchip{display:inline-block;padding:1px 6px;border-radius:6px;font:700 11px Inter;text-align:center}
+  .iv-form .iv-sec{display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;font-size:14px;color:var(--text)}
+  .iv-times{display:flex!important;align-items:center;gap:6px;margin:0!important;font-size:13px}
+  .iv-times input{width:56px!important;display:inline-block!important;margin:0!important;padding:6px 8px!important;text-align:center}
+  .iv-row{display:grid;grid-template-columns:1fr 62px 70px 30px;gap:6px;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .iv-row input,.iv-row select{margin:0;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:15px Inter;width:100%;box-sizing:border-box}
+  .iv-row button{all:unset;cursor:pointer;text-align:center;color:var(--muted)}
+  .iv-row .iv-note{grid-column:1 / -1;font-size:13px;padding:6px 8px}
+  .iv-total{font-size:13px;color:var(--muted);margin:10px 0}
+  .iv-total b{color:var(--text)}
+  .ilive{padding-top:2px}
+  .il-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px}
+  .il-top b{display:block;font:600 17px Inter}
+  .il-top small,.il-top > span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .il-card{border-radius:18px;padding:16px 16px 14px;border:1px solid;text-align:center;color:#eef0f3}
+  .il-card.dark{color:#1a0d06}
+  .il-part{font:600 12px Inter;text-transform:uppercase;letter-spacing:.8px;opacity:.8}
+  .il-label{font:700 34px/1.1 var(--num);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+  .il-eff{font-size:15px;margin-top:2px}
+  .il-eff b{font:700 22px var(--num)}
+  .il-clock{font:700 88px/1 var(--num);font-variant-numeric:tabular-nums;margin:8px 0 6px}
+  .il-bar{height:6px;border-radius:3px;background:rgba(0,0,0,.25);overflow:hidden}
+  .il-bar i{display:block;height:100%;background:currentColor;opacity:.85;transition:width .25s linear}
+  .il-cue{margin-top:10px;font-size:14px;opacity:.9}
+  .il-next{margin:12px 2px 0;font-size:14px;color:var(--muted)}
+  .il-next b{color:var(--text)}
+  .il-paused{margin-top:8px;text-align:center;font:700 13px Inter;letter-spacing:1px;text-transform:uppercase;color:var(--accent2)}
+  .il-ctrl{display:grid;grid-template-columns:56px 1fr 56px 48px;gap:8px;margin:14px 0 8px}
+  .il-ctrl button{all:unset;cursor:pointer;height:52px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-align:center;font:700 17px Inter;color:var(--text)}
+  .il-ctrl button.go{background:var(--accent);border-color:var(--accent);color:#1a0d06}
+  .il-ctrl button.off{opacity:.45}
+  body.in-ilive .sports, body.in-ilive .tabs{display:none!important}
   .cacts{display:flex;gap:2px;justify-content:center;margin-top:auto}
   .cacts i{display:flex;width:15px;height:15px;border-radius:4px;align-items:center;justify-content:center;font-style:normal}
   .ca-run{background:#5a3220;color:#ffb38f}.ca-bike{background:#1f4656;color:#7fd3f0}.ca-swim{background:#273a6b;color:#9db4ff}.ca-gym{background:#1f4d33;color:var(--go)}
@@ -532,7 +571,7 @@
   <div id="content"></div>
 
   <footer id="footer" hidden>
-    <span>Saved on this device only · v33<br>Maps &amp; city names © OpenStreetMap</span>
+    <span>Saved on this device only · v34<br>Maps &amp; city names © OpenStreetMap</span>
     <span>
       <button id="clearBtn" type="button">Clear all runs</button>
       <span class="confirm" id="confirm"><span>Delete all?</span><button class="danger" id="yesClear" type="button">Delete</button><button id="noClear" type="button">Cancel</button></span>
@@ -1954,8 +1993,8 @@
   };
   const SPORTS = {
     health: { name: 'Health', tabs: [['health', 'Overview', '#health']], sub: [['sleep', '#health-sleep'], ['day', '#health-day']] },
-    run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']] },
-    bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']] },
+    run: { name: 'Run', tabs: [['runs', 'Runs', ''], ['intervals', 'Intervals', '#intervals'], ['records', 'Records', '#records'], ['plan', 'Plan', '#plan']], sub: [['ilive', '#ilive-run']] },
+    bike: { name: 'Bike', tabs: [['rides', 'Rides', '#bike'], ['intervals', 'Intervals', '#bike-intervals'], ['records', 'Records', '#bike-records'], ['plan', 'Plan', '#bike-plan']], sub: [['ilive', '#ilive-bike']] },
     swim: { name: 'Swim', tabs: [['swims', 'Swims', '#swim'], ['records', 'Records', '#swim-records']] },
     workout: { name: 'Workout', tabs: [['week', 'Calendar', '#workout'], ['presets', 'Workouts', '#workout-presets'], ['exercises', 'Exercises', '#workout-exercises']], sub: [['live', '#workout-live'], ['lift', '#workout-lift']] }
   };
@@ -2281,6 +2320,7 @@
   const DAY_KINDS = { run: { label: 'Run', icon: 'run' }, bike: { label: 'Bike', icon: 'bike' }, swim: { label: 'Swim', icon: 'swim' }, rest: { label: 'Rest day', short: 'Rest' } };
   const kindIcon = (k, s = 13) => !DAY_KINDS[k] ? '' : `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${k === 'rest' ? '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>' : ICONS[DAY_KINDS[k].icon]}</svg>`;
   const ridesOn = k => (state.rides || []).filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
+  const dayIv = x => x && typeof x === 'string' && x.startsWith('i:') ? ivById(x.slice(2)) : null;
   const runsOn = k => state.runs.filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   const swimsOn = k => (state.swims || []).filter(r => dayKey(new Date(r.start)) === k).sort((a, b) => a.start - b.start);
   // Everything you actually did on a day, planned or not: runs, rides, swims and logged gym workouts
@@ -2303,7 +2343,7 @@
     const todayK = dayKey(now), lead = (m0.getDay() + 6) % 7; // Monday-first grid
     const monthKeys = Array.from({ length: daysIn }, (_, i) => dayKey(new Date(m0.getFullYear(), m0.getMonth(), i + 1)));
     if (!state.woDay || !monthKeys.includes(state.woDay)) state.woDay = monthKeys.includes(todayK) ? todayK : monthKeys[0];
-    const planned = monthKeys.filter(k => wo.days[k] && (presetById(wo.days[k]) || (DAY_KINDS[wo.days[k]] && wo.days[k] !== 'rest'))).length;
+    const planned = monthKeys.filter(k => wo.days[k] && (presetById(wo.days[k]) || dayIv(wo.days[k]) || (DAY_KINDS[wo.days[k]] && wo.days[k] !== 'rest'))).length;
     const arrow = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
     let html = startBtnHtml() + `<div class="week slim" id="woMonthNav">
         <button class="wnav" type="button" id="mPrev" aria-label="Previous month">${arrow('M15 6l-6 6 6 6')}</button>
@@ -2314,15 +2354,15 @@
         ${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => `<div class="cal-h">${d}</div>`).join('')}
         ${'<div class="cal-blank"></div>'.repeat(lead)}
         ${monthKeys.map((k, i) => {
-          const x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x];
+          const x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x], iv = dayIv(x);
           const acts = actsOn(k), did = acts.length > 0;
-          const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', kd && x !== 'rest' ? 'sport k-' + x : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
-          return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : kd ? ': ' + kd.label : ''}">
-            <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}${acts.length ? `<span class="cacts">${[...new Set(acts)].map(a => `<i class="ca-${a}">${actIcon(a)}</i>`).join('')}</span>` : ''}</button>`;
+          const cls = ['cal-d', k === todayK ? 'today' : '', k === state.woDay ? 'sel' : '', p ? 'has' : '', x === 'rest' ? 'rest' : '', kd && x !== 'rest' ? 'sport k-' + x : '', iv ? 'sport k-' + iv.sport : '', k < todayK ? 'past' : ''].filter(Boolean).join(' ');
+          return `<button type="button" class="${cls}" data-date="${k}" aria-label="${esc(new Date(k + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}${p ? ': ' + esc(p.name) : iv ? ': ' + esc(iv.name) : kd ? ': ' + kd.label : ''}">
+            <span class="cn">${i + 1}${did ? '<i class="done">✓</i>' : ''}</span>${p ? `<span class="cw">${esc(p.name)}</span>` : iv ? `<span class="cw">${kindIcon(iv.sport, 11)}Intervals</span>` : kd ? `<span class="cw">${x === 'rest' ? '' : kindIcon(x, 11)}${kd.short || kd.label}</span>` : ''}${acts.length ? `<span class="cacts">${[...new Set(acts)].map(a => `<i class="ca-${a}">${actIcon(a)}</i>`).join('')}</span>` : ''}</button>`;
         }).join('')}
       </div>`;
     // selected day
-    const k = state.woDay, x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x], dd = new Date(k + 'T12:00:00');
+    const k = state.woDay, x = wo.days[k], p = x && !DAY_KINDS[x] ? presetById(x) : null, kd = DAY_KINDS[x], iv = dayIv(x), dd = new Date(k + 'T12:00:00');
     html += `<div class="daypanel">
       <div class="dp-h"><b>${esc(dd.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</b>${k === todayK ? '<span class="badge">Today</span>' : ''}</div>
       ${doneOn(k).map(l => { const exd = l.ex.filter(e => e.sets.some(x => x.done)); return `<div class="donebox"><b>✓ Completed: ${esc(l.name)}</b><small>${fmtDur((l.end - l.start) / 1000)} · ${exd.reduce((s, e) => s + e.sets.filter(x => x.done).length, 0)} sets · ${exd.length} exercise${exd.length === 1 ? '' : 's'}</small>
@@ -2330,16 +2370,19 @@
       ${doneLinks(k)}
       ${p && k === todayK && !state.live ? `<div style="padding:0 14px"><button type="button" class="wide-btn primary" data-start="${p.id}">Start ${esc(p.name)}</button></div>` : ''}
       ${p ? `<div class="dp-wo"><b>${esc(p.name)}</b><small>${p.ex.length} exercise${p.ex.length === 1 ? '' : 's'}</small></div><div class="dex">${presetBody(p, 'd' + k)}</div>`
+          : iv ? `<div class="dp-wo"><b class="kindh k-${iv.sport}">${kindIcon(iv.sport, 18)} ${esc(iv.name)}</b><small>${iv.sport === 'bike' ? 'Bike' : 'Run'} intervals · ${fmtMS(ivTotal(iv))}</small></div>
+              <div style="padding:0 14px 8px">${ivStrip(ivTimeline(iv))}${k === todayK && !state.ilive ? `<button type="button" class="wide-btn primary" data-ivstart="${iv.id}">Start ${esc(iv.name)}</button>` : ''}</div>`
           : x === 'rest' ? `<div class="dp-wo"><b class="rest">Rest day</b></div>`
           : kd ? `<div class="dp-wo"><b class="kindh k-${x}">${kindIcon(x, 18)} ${kd.label}</b>${x === 'run' ? (runsOn(k).length ? '' : `<small>${k < todayK ? 'No run recorded this day.' : 'Planned run day.'}</small>`) : x === 'bike' ? (ridesOn(k).length ? '' : `<small>${k < todayK ? 'No ride recorded this day.' : 'Planned ride day.'}</small>`) : (swimsOn(k).length ? '' : `<small>${k < todayK ? 'No swim recorded this day.' : 'Planned swim day.'}</small>`)}</div>
 `
           : actsOn(k).length ? '' : `<div class="note" style="margin:2px 0 8px">Nothing planned. Pick something below.</div>`}
       <div class="picker">
-        <div class="pk-h">${p || kd ? 'Change to' : 'Plan this day'}</div>
+        <div class="pk-h">${p || kd || iv ? 'Change to' : 'Plan this day'}</div>
         <div class="kinds">${['run', 'bike', 'swim', 'rest'].map(t => `<button type="button" class="kchip k-${t}${x === t ? ' on' : ''}" data-set="${t}">${kindIcon(t, 16)}<span>${DAY_KINDS[t].short || DAY_KINDS[t].label}</span></button>`).join('')}</div>
         <div class="pk-h" style="margin-top:10px">Gym workouts</div>
         ${wo.presets.length ? [...wo.presets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(pr => `<button type="button" class="pk${pr.id === x ? ' on' : ''}" data-set="${pr.id}"><b>${esc(pr.name)}</b><small>${pr.ex.length} exercise${pr.ex.length === 1 ? '' : 's'}${pr.rest ? ' · rest ' + fmtRest(pr.rest) : ''}</small></button>`).join('')
           : `<div class="note" style="margin:0 0 8px">You don’t have any workouts yet. Make one with <b>+ New workout</b>.</div>`}
+        ${ivs.list.length ? `<div class="pk-h" style="margin-top:10px">Bike &amp; run intervals</div>` + [...ivs.list].sort((a, b) => a.sport.localeCompare(b.sport) || a.name.localeCompare(b.name)).map(v => `<button type="button" class="pk${'i:' + v.id === x ? ' on' : ''}" data-set="i:${v.id}"><b><span class="kindh k-${v.sport}" style="display:inline-flex!important">${kindIcon(v.sport, 13)}</span> ${esc(v.name)}</b><small>${fmtMS(ivTotal(v))}</small></button>`).join('') : ''}
         <div class="pk-row"><button type="button" class="linkbtn" id="pkNew">+ New workout</button>${x ? `<button type="button" class="linkbtn danger-t" data-set="">Clear day</button>` : ''}</div>
       </div></div>`;
     $('content').innerHTML = html;
@@ -2352,6 +2395,7 @@
     document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { if (b.dataset.set) wo.days[k] = b.dataset.set; else delete wo.days[k]; saveWo(); render(); });
     $('pkNew').onclick = () => { state.woReturn = { date: k, month: off }; state.woDraft = newDraft(); goHash('#workout-presets'); };
     wireVids(); wireStart();
+    document.querySelectorAll('[data-ivstart]').forEach(b => b.onclick = () => startInterval(b.dataset.ivstart));
     const w = $('woMonthNav'); let x0 = null;
     w.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
     w.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) (dx > 0 ? $('mPrev') : $('mNext')).click(); });
@@ -3041,6 +3085,237 @@
     if (state.listScroll != null) { window.scrollTo(0, state.listScroll); state.listScroll = null; }
   }
 
+  /* ---------- Interval workouts (bike + run): warm-up, a repeated main set, cool-down, played as a live countdown ---------- */
+  const IV_KEY = 'runlog.intervals', ILIVE_KEY = 'runlog.ilive';
+  let ivs = { list: [], seeded: {} };
+  try { ivs = Object.assign(ivs, JSON.parse(localStorage.getItem(IV_KEY) || '{}')); } catch {}
+  if (!ivs.seeded) ivs.seeded = {};
+  const saveIvs = () => { try { localStorage.setItem(IV_KEY, JSON.stringify(ivs)); return true; } catch { showMsg('Your phone’s storage for this app is full, so this could not be saved.', true); return false; } };
+  if (!ivs.seeded.gcnThreshold) {
+    ivs.list.push({ id: newId(), sport: 'bike', name: 'GCN · Gradual threshold builds', video: 'https://www.youtube.com/watch?v=br5q9MrVVeU',
+      notes: 'From GCN Training’s 30-minute indoor workout. Make each block a little harder than the one before. Works on a spin bike with no screen: go by feel.',
+      warm: [{ label: 'Easy spin', sec: 120, effort: 2 }, { label: 'Build up', sec: 120, effort: 7, note: 'Gradually build from 2/10 to 7/10' }, { label: 'Ease off', sec: 60, effort: 2 }],
+      times: 4, main: [{ label: 'Steady', sec: 180, effort: 6, note: 'You can just about hold a conversation' }, { label: 'Hard', sec: 120, effort: 8, note: 'Too hard to talk' }, { label: 'Recover', sec: 60, effort: 2, note: 'Easy pedaling' }],
+      cool: [{ label: 'Cool-down', sec: 120, effort: 2, note: 'Light gear, easy pedaling' }] });
+    ivs.seeded.gcnThreshold = true; saveIvs();
+  }
+  try { state.ilive = JSON.parse(localStorage.getItem(ILIVE_KEY) || 'null'); } catch {}
+  const saveILive = () => { try { state.ilive ? localStorage.setItem(ILIVE_KEY, JSON.stringify(state.ilive)) : localStorage.removeItem(ILIVE_KEY); } catch {} };
+  const ivById = id => ivs.list.find(v => v.id === id);
+  const EFFORT_WORD = ['', 'Very easy', 'Very easy', 'Easy', 'Easy', 'Moderate', 'Steady', 'Hard-ish', 'Hard', 'Very hard', 'All out'];
+  const EFFORT_COLOR = ['', '#4a4f5a', '#4a4f5a', '#6b5a4f', '#8a4a2c', '#b0562d', '#d8632f', '#ff7a45', '#ff9a6b', '#ffb894', '#ffd8c4'];
+  const fmtMS = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  function parseMS(t) { // "3:00", "90s", "2.5" (minutes) -> seconds
+    t = String(t || '').trim().toLowerCase(); if (!t) return 0;
+    let m = t.match(/^(\d+):(\d{1,2})$/); if (m) return +m[1] * 60 + +m[2];
+    m = t.match(/^(\d+(?:\.\d+)?)\s*s(ec)?$/); if (m) return Math.round(+m[1]);
+    m = t.match(/^(\d+(?:\.\d+)?)\s*(m|min)?$/); if (m) return Math.round(+m[1] * 60);
+    return 0;
+  }
+  function ivTimeline(v) {
+    const out = [], n = Math.max(1, +v.times || 1);
+    (v.warm || []).forEach(s => out.push({ ...s, part: 'Warm-up' }));
+    for (let b = 1; b <= n; b++) (v.main || []).forEach(s => out.push({ ...s, part: n > 1 ? `Block ${b} of ${n}` : 'Main set', block: b }));
+    (v.cool || []).forEach(s => out.push({ ...s, part: 'Cool-down' }));
+    let t = 0; for (const s of out) { s.t0 = t; t += s.sec; s.t1 = t; }
+    return out.filter(s => s.sec > 0);
+  }
+  const ivTotal = v => ivTimeline(v).reduce((a, s) => a + s.sec, 0);
+  const effortChip = e => `<span class="effchip" style="background:${EFFORT_COLOR[e] || '#4a4f5a'};color:${e >= 7 ? '#1a0d06' : '#eef0f3'}">${e}/10</span>`;
+  const segLine = s => `<div class="ivseg"><span>${esc(s.label || 'Interval')}</span><b>${fmtMS(s.sec)}</b>${effortChip(s.effort)}</div>`;
+  function ivStrip(tl, cur) { // the whole workout as a coloured strip, harder = taller
+    const tot = tl.reduce((a, s) => a + s.sec, 0) || 1;
+    return `<div class="ivstrip">${tl.map((s, i) => `<i style="width:${(s.sec / tot * 100).toFixed(3)}%;height:${20 + s.effort * 8}%;background:${EFFORT_COLOR[s.effort] || '#4a4f5a'}${cur != null && i < cur ? ';opacity:.35' : ''}${i === cur ? ';outline:2px solid #eef0f3;outline-offset:-1px' : ''}"></i>`).join('')}</div>`;
+  }
+  const ivHash = sport => sport === 'bike' ? '#bike-intervals' : '#intervals';
+  function renderIntervals(sport) {
+    $('footer').hidden = true;
+    const d = state.ivDraft && state.ivDraft.sport === sport ? state.ivDraft : null;
+    const list = ivs.list.filter(v => v.sport === sport).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    let html = '';
+    if (state.ilive) html += `<button type="button" class="wide-btn primary" id="ivResume">Resume ${esc(state.ilive.name)} ›</button>`;
+    if (d) html += ivFormHtml(d);
+    else html += `<button type="button" class="wide-btn" id="ivNew">+ New ${sport === 'bike' ? 'bike' : 'run'} interval workout</button>`;
+    if (list.length) html += `<h2>${sport === 'bike' ? 'Bike' : 'Run'} interval workouts</h2>` + list.map(v => {
+      const tl = ivTimeline(v);
+      return `<div class="wo-card iv-card">
+        <div class="wo-top"><div><b>${esc(v.name)}</b><small>${fmtMS(ivTotal(v))} · ${tl.length} intervals${v.times > 1 ? ` · main set ×${v.times}` : ''}</small></div>
+          <div class="wo-act"><button type="button" class="linkbtn" data-ivstart="${v.id}">Start</button><button type="button" class="linkbtn" data-ivcopy="${v.id}">Duplicate</button><button type="button" class="linkbtn" data-ivedit="${v.id}">Edit</button></div></div>
+        ${ivStrip(tl)}
+        <div class="ivparts">
+          ${v.warm && v.warm.length ? `<div class="ivpart"><small>Warm-up</small>${v.warm.map(segLine).join('')}</div>` : ''}
+          ${v.main && v.main.length ? `<div class="ivpart main"><small>Main set${v.times > 1 ? ` · repeat ×${v.times}` : ''}</small>${v.main.map(segLine).join('')}</div>` : ''}
+          ${v.cool && v.cool.length ? `<div class="ivpart"><small>Cool-down</small>${v.cool.map(segLine).join('')}</div>` : ''}
+        </div>
+        ${v.notes ? `<div class="note">${esc(v.notes)}</div>` : ''}
+        ${ytId(v.video) || igInfo(v.video) ? `<a class="linkbtn" style="display:inline-block;margin-top:6px;font-size:13px" href="${esc(ytId(v.video) ? 'https://www.youtube.com/watch?v=' + ytId(v.video) : igInfo(v.video).url)}" target="_blank" rel="noopener">▶ Watch the original video</a>` : ''}
+      </div>`;
+    }).join('');
+    else if (!d) html += `<div class="empty"><div class="big">No ${sport === 'bike' ? 'bike' : 'run'} intervals yet</div>Build a workout from a warm-up, a main set you can repeat (like 3 min steady, 2 min hard, 1 min easy, ×4) and a cool-down. Then tap <b>Start</b> and the app counts down each interval and beeps when it’s time to change.</div>`;
+    $('content').innerHTML = html;
+    if ($('ivResume')) $('ivResume').onclick = () => goHash('#ilive-' + state.ilive.sport);
+    if ($('ivNew')) $('ivNew').onclick = () => {
+      state.ivDraft = { id: null, sport, name: '', notes: '', video: '', times: 4,
+        warm: [{ label: 'Easy', sec: 300, effort: 3 }], main: [{ label: 'Hard', sec: 120, effort: 8 }, { label: 'Recover', sec: 60, effort: 2 }], cool: [{ label: 'Cool-down', sec: 300, effort: 2 }] };
+      render(); $('ivName').focus();
+    };
+    document.querySelectorAll('[data-ivstart]').forEach(b => b.onclick = () => startInterval(b.dataset.ivstart));
+    document.querySelectorAll('[data-ivedit]').forEach(b => b.onclick = () => { state.ivDraft = JSON.parse(JSON.stringify(ivById(b.dataset.ivedit))); render(); window.scrollTo(0, 0); });
+    document.querySelectorAll('[data-ivcopy]').forEach(b => b.onclick = () => { const c = JSON.parse(JSON.stringify(ivById(b.dataset.ivcopy))); c.id = newId(); c.name += ' (copy)'; ivs.list.push(c); saveIvs(); render(); });
+    if (d) wireIvForm(d);
+  }
+  function ivFormHtml(d) {
+    const effSel = (part, i, e) => `<select data-part="${part}" data-i="${i}" data-f="effort" aria-label="Effort">${Array.from({ length: 10 }, (_, k) => k + 1).map(v => `<option value="${v}"${v === +e ? ' selected' : ''}>${v}/10</option>`).join('')}</select>`;
+    const rows = part => (d[part] || []).map((s, i) => `<div class="iv-row">
+        <input data-part="${part}" data-i="${i}" data-f="label" maxlength="24" placeholder="e.g. Hard" value="${esc(s.label || '')}" aria-label="Interval name">
+        <input data-part="${part}" data-i="${i}" data-f="sec" inputmode="numeric" placeholder="m:ss" value="${s.sec ? fmtMS(s.sec) : ''}" aria-label="Duration (minutes:seconds)">
+        ${effSel(part, i, s.effort || 5)}
+        <button type="button" data-ivrm="${part}" data-i="${i}" aria-label="Remove interval">✕</button>
+        <input class="iv-note" data-part="${part}" data-i="${i}" data-f="note" maxlength="80" placeholder="Cue (optional), e.g. too hard to talk" value="${esc(s.note || '')}">
+      </div>`).join('');
+    return `<form class="sheet iv-form" id="ivForm">
+      <h3>${d.id ? 'Edit' : 'New'} ${d.sport === 'bike' ? 'bike' : 'run'} interval workout</h3>
+      <label>Name<input id="ivName" maxlength="50" placeholder="e.g. Threshold builds" value="${esc(d.name)}"></label>
+      <div class="iv-sec"><b>Warm-up</b></div>${rows('warm')}<button type="button" class="linkbtn" data-ivadd="warm">+ Add interval</button>
+      <div class="iv-sec"><b>Main set</b><label class="iv-times">Repeat ×<input id="ivTimes" type="number" inputmode="numeric" min="1" max="30" value="${d.times || 1}"></label></div>${rows('main')}<button type="button" class="linkbtn" data-ivadd="main">+ Add interval</button>
+      <div class="iv-sec"><b>Cool-down</b></div>${rows('cool')}<button type="button" class="linkbtn" data-ivadd="cool">+ Add interval</button>
+      <div class="iv-total" id="ivTotal"></div>
+      <label>Notes (optional)<input id="ivNotes" maxlength="200" value="${esc(d.notes || '')}" placeholder="e.g. Make each block a bit harder"></label>
+      <label>Video link (optional, YouTube or Instagram)<input id="ivVideo" inputmode="url" autocomplete="off" value="${esc(d.video || '')}"></label>
+      <div class="note" style="margin:-4px 0 10px">Durations are minutes:seconds (3:00, 0:30). Effort is out of 10: 2 easy spin, 6 steady, 8 too hard to talk, 10 all out.</div>
+      <div class="sheet-btns">${d.id ? `<button type="button" class="danger" id="ivDelete">Delete</button>` : ''}<button type="button" id="ivCancel">Cancel</button><button type="submit" class="primary">Save</button></div>
+    </form>`;
+  }
+  function wireIvForm(d) {
+    const f = $('ivForm');
+    const total = () => { const tl = ivTimeline(d); $('ivTotal').innerHTML = `Total <b>${fmtMS(tl.reduce((a, s) => a + s.sec, 0))}</b> · ${tl.length} intervals` + ivStrip(tl); };
+    total();
+    f.addEventListener('input', e => {
+      const t = e.target;
+      if (t.id === 'ivName') d.name = t.value; else if (t.id === 'ivNotes') d.notes = t.value; else if (t.id === 'ivVideo') d.video = t.value;
+      else if (t.id === 'ivTimes') d.times = Math.max(1, Math.min(30, parseInt(t.value, 10) || 1));
+      else if (t.dataset.part) { const s = d[t.dataset.part][+t.dataset.i]; s[t.dataset.f] = t.dataset.f === 'sec' ? parseMS(t.value) : t.dataset.f === 'effort' ? +t.value : t.value; }
+      total();
+    });
+    f.addEventListener('change', e => { const t = e.target; if (t.dataset.f === 'effort') { d[t.dataset.part][+t.dataset.i].effort = +t.value; total(); } if (t.dataset.f === 'sec') t.value = d[t.dataset.part][+t.dataset.i].sec ? fmtMS(d[t.dataset.part][+t.dataset.i].sec) : ''; });
+    f.querySelectorAll('[data-ivadd]').forEach(b => b.onclick = () => { const arr = d[b.dataset.ivadd], last = arr[arr.length - 1]; arr.push(last ? { ...last, note: '' } : { label: '', sec: 60, effort: 5 }); render(); });
+    f.querySelectorAll('[data-ivrm]').forEach(b => b.onclick = () => { d[b.dataset.ivrm].splice(+b.dataset.i, 1); render(); });
+    $('ivCancel').onclick = () => { state.ivDraft = null; render(); };
+    if ($('ivDelete')) $('ivDelete').onclick = () => {
+      const b = $('ivDelete'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Tap again to delete'; return; }
+      ivs.list = ivs.list.filter(v => v.id !== d.id); for (const k in wo.days) if (wo.days[k] === 'i:' + d.id) delete wo.days[k];
+      saveIvs(); saveWo(); state.ivDraft = null; render();
+    };
+    f.onsubmit = e => {
+      e.preventDefault();
+      d.name = d.name.trim(); if (!d.name) { $('ivName').focus(); $('ivName').placeholder = 'Give it a name'; return; }
+      for (const p of ['warm', 'main', 'cool']) d[p] = d[p].filter(s => s.sec > 0).map(s => ({ label: (s.label || '').trim() || 'Interval', sec: s.sec, effort: +s.effort || 5, ...(s.note && s.note.trim() ? { note: s.note.trim() } : {}) }));
+      if (!ivTimeline(d).length) { showMsg('Add at least one interval with a duration.', true); return; }
+      showMsg('');
+      if (d.id) Object.assign(ivById(d.id), d); else { d.id = newId(); ivs.list.push(d); }
+      saveIvs(); state.ivDraft = null; render();
+    };
+  }
+
+  /* live player */
+  let ivTick = null, ivSeg = -1;
+  const ivElapsed = L => ((L.pausedAt || Date.now()) - L.start - (L.pausedTotal || 0)) / 1000 + (L.shift || 0);
+  function startInterval(id) {
+    const v = ivById(id); if (!v) return;
+    if (state.ilive) { goHash('#ilive-' + state.ilive.sport); return; }
+    unlockAudio();
+    state.ilive = { id, sport: v.sport, name: v.name, tl: ivTimeline(v), start: Date.now(), pausedAt: null, pausedTotal: 0, shift: 0 };
+    saveILive(); ivSchedule(); goHash('#ilive-' + v.sport);
+  }
+  function ivSchedule() { // queue the 3-2-1 ticks and change beeps for every remaining interval on the audio clock
+    cancelBeep();
+    const L = state.ilive; if (!L || L.pausedAt || !soundOn()) return;
+    const c = ctx(); if (!c) return;
+    const el = ivElapsed(L), now = c.currentTime;
+    try {
+      L.tl.forEach((s, i) => {
+        const at = s.t1 - el; if (at < -0.2 || at > 3600) return;
+        const last = i === L.tl.length - 1, nxt = L.tl[i + 1];
+        [3, 2, 1].forEach(k => { if (at - k > 0.05) tone(c, now + at - k, 660, .1, .3); });
+        if (last) [0, .2, .4, .6].forEach((d, j) => tone(c, now + Math.max(.02, at) + d, 990, j === 3 ? .6 : .15, .5));
+        else { const up = nxt.effort > s.effort; tone(c, now + Math.max(.02, at), up ? 990 : 520, .35, .5); if (up) tone(c, now + Math.max(.02, at) + .4, 1180, .25, .45); }
+      });
+    } catch {}
+  }
+  function ivJump(toSec) { const L = state.ilive; L.shift = (L.shift || 0) + (toSec - ivElapsed(L)); saveILive(); ivSchedule(); ivSeg = -1; renderILive(); }
+  function ivStop() { clearInterval(ivTick); cancelBeep(); try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; document.body.classList.remove('in-ilive'); }
+  function renderILive() {
+    const L = state.ilive;
+    if (!L) { const s = routeFromHash().sport; goHash(ivHash(s)); return; }
+    document.body.classList.add('in-ilive'); wakeOn();
+    const total = L.tl[L.tl.length - 1].t1;
+    const draw = () => {
+      if (!$('ivClock')) { clearInterval(ivTick); return; }
+      const el = Math.min(ivElapsed(L), total), done = el >= total;
+      const i = done ? L.tl.length - 1 : L.tl.findIndex(s => el < s.t1);
+      if (i !== ivSeg) { ivSeg = i; return paint(); }
+      const s = L.tl[i];
+      $('ivClock').textContent = done ? '0:00' : fmtMS(Math.ceil(s.t1 - el));
+      $('ivBar').style.width = (done ? 100 : (el - s.t0) / s.sec * 100) + '%';
+      $('ivLeft').textContent = fmtMS(Math.ceil(total - el)) + ' left';
+      $('ivEl').textContent = fmtMS(el);
+      if (done && !L.done) { L.done = Date.now(); saveILive(); paint(); }
+    };
+    const paint = () => {
+      const el = Math.min(ivElapsed(L), total), done = el >= total;
+      const i = done ? L.tl.length - 1 : Math.max(0, L.tl.findIndex(s => el < s.t1)), s = L.tl[i], nx = L.tl[i + 1];
+      const col = EFFORT_COLOR[s.effort] || '#4a4f5a', dark = s.effort >= 7;
+      $('content').innerHTML = `<div class="ilive">
+        <div class="il-top"><div><b>${esc(L.name)}</b><small>${L.sport === 'bike' ? 'Bike' : 'Run'} intervals · <span id="ivEl">${fmtMS(el)}</span> elapsed</small></div><span id="ivLeft">${fmtMS(total - el)} left</span></div>
+        ${done ? `<div class="il-card" style="background:#12291c;border-color:#1f4d33"><div class="il-part">Finished</div><div class="il-label" style="color:var(--go)">Workout complete 🎉</div>
+            <div class="il-cue">${fmtMS(total)} of intervals done. Stop the workout on your watch, then import your Health export to see the ${L.sport === 'bike' ? 'ride' : 'run'} with heart rate.</div></div>
+            <button type="button" class="wide-btn primary" id="ivDone">Done</button>`
+        : `<div class="il-card${dark ? ' dark' : ''}" style="background:${col};border-color:${col}">
+            <div class="il-part">${esc(s.part)} · ${i + 1} of ${L.tl.length}</div>
+            <div class="il-label">${esc(s.label)}</div>
+            <div class="il-eff"><b>${s.effort}/10</b> ${EFFORT_WORD[s.effort] || ''}</div>
+            <div class="il-clock" id="ivClock">${fmtMS(s.sec)}</div>
+            <div class="il-bar"><i id="ivBar"></i></div>
+            ${s.note ? `<div class="il-cue">${esc(s.note)}</div>` : ''}
+          </div>
+          <div class="il-next">${nx ? `Next: <b>${esc(nx.label)}</b> · ${fmtMS(nx.sec)} · ${effortChip(nx.effort)}${nx.part !== s.part ? ` <small>(${esc(nx.part)})</small>` : ''}` : 'Last interval: finish strong'}</div>
+          ${L.pausedAt ? `<div class="il-paused">Paused</div>` : ''}
+          <div class="il-ctrl">
+            <button type="button" id="ivPrev" aria-label="Back to start of interval">⏮</button>
+            <button type="button" class="go" id="ivPause">${L.pausedAt ? '▶ Resume' : '❚❚ Pause'}</button>
+            <button type="button" id="ivNext" aria-label="Skip to next interval">⏭</button>
+            <button type="button" class="snd${soundOn() ? '' : ' off'}" id="ivSnd" aria-label="Sound">${soundOn() ? '🔔' : '🔕'}</button>
+          </div>`}
+        ${ivStrip(L.tl, done ? L.tl.length : i)}
+        ${done ? '' : `<button type="button" class="wide-btn" id="ivEnd">End workout</button>`}
+        <div class="note">Beeps count down 3-2-1 before each change: a rising beep means speed up, a low beep means ease off. Keep the app open: the screen stays on during the workout.</div>
+      </div>`;
+      const on = (id, fn) => { const e = $(id); if (e) e.onclick = () => { unlockAudio(); fn(); }; };
+      on('ivPause', () => {
+        if (L.pausedAt) { L.pausedTotal += Date.now() - L.pausedAt; L.pausedAt = null; } else L.pausedAt = Date.now();
+        saveILive(); ivSchedule(); paint();
+      });
+      on('ivNext', () => ivJump(s.t1));
+      on('ivPrev', () => ivJump(el - s.t0 > 3 || i === 0 ? s.t0 : L.tl[i - 1].t0));
+      on('ivSnd', () => { localStorage.setItem('runlog.restsound', soundOn() ? 'off' : 'on'); ivSchedule(); paint(); });
+      on('ivEnd', () => { const b = $('ivEnd'); if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Tap again to end the workout'; b.classList.add('danger'); return; } const sp = L.sport; state.ilive = null; saveILive(); ivStop(); goHash(ivHash(sp)); });
+      on('ivDone', () => { const sp = L.sport; state.ilive = null; saveILive(); ivStop(); goHash(ivHash(sp)); });
+      draw();
+    };
+    clearInterval(ivTick); ivSeg = -1; paint(); ivTick = setInterval(draw, 250);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.ilive && document.body.classList.contains('in-ilive')) { wakeOn(); ivSchedule(); }
+  });
+  function ivBanner(view) {
+    if (!state.ilive || view === 'ilive' || document.body.classList.contains('in-run')) return;
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'livebar';
+    el.innerHTML = `<span>● Intervals in progress · ${esc(state.ilive.name)}</span><b>Resume ›</b>`;
+    el.onclick = () => goHash('#ilive-' + state.ilive.sport);
+    $('content').prepend(el);
+  }
+
   /* ---------- Sleep: one night at a time ---------- */
   const STAGES = [['awake', 'Awake', '#d9d0ff'], ['rem', 'REM', '#a690ff'], ['core', 'Core', '#7d63e6'], ['deep', 'Deep', '#5e45c4']];
   function hypnogram(key, n) {
@@ -3137,7 +3412,7 @@
 
   function render() {
     renderView();
-    liveBanner(routeFromHash().view);
+    liveBanner(routeFromHash().view); ivBanner(routeFromHash().view);
   }
   function renderView() {
     $('content').oninput = null;
@@ -3146,10 +3421,13 @@
     let { sport, view } = routeFromHash();
     if (view === 'run' && !run) view = 'runs';
     document.body.classList.toggle('in-run', view === 'run' || view === 'ride');
-    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || sport === 'bike' || sport === 'swim' || sport === 'workout');
+    document.body.classList.toggle('in-records', view === 'records' || view === 'plan' || view === 'intervals' || view === 'ilive' || sport === 'bike' || sport === 'swim' || sport === 'workout');
     renderNavs(sport, view);
     destroyMaps();
     if (!(sport === 'workout' && view === 'live')) leaveLive();
+    if (view !== 'ilive') { clearInterval(ivTick); document.body.classList.remove('in-ilive'); }
+    if (view === 'intervals') { state.shownRun = null; return renderIntervals(sport); }
+    if (view === 'ilive') { state.shownRun = null; return renderILive(); }
     if (sport === 'health') { state.shownRun = null; return view === 'sleep' ? renderSleep() : view === 'day' ? renderDay() : renderHealth(); }
     if (sport === 'workout') { state.shownRun = null; return renderWorkout(view); }
     if (sport === 'bike') return renderBike(view);
